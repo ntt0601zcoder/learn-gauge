@@ -10,7 +10,9 @@ For the full list of settings and their values, see
 https://docs.djangoproject.com/en/5.1/ref/settings/
 """
 
+from datetime import timedelta
 from pathlib import Path
+from decouple import config
 
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
 BASE_DIR = Path(__file__).resolve().parent.parent
@@ -25,8 +27,11 @@ SECRET_KEY = 'django-insecure-an$a)cg==8-@lvxkxycv=5m(&zu0b0m$m(^v)959wcrnpyb12d
 # SECURITY WARNING: don't run with debug turned on in production!
 DEBUG = True
 
-ALLOWED_HOSTS = []
+ALLOWED_HOSTS = ["*"]
 
+CORS_ALLOW_ALL_ORIGINS = True
+
+CORS_ALLOW_CREDENTIALS = True
 
 # Application definition
 
@@ -37,10 +42,16 @@ INSTALLED_APPS = [
     'django.contrib.sessions',
     'django.contrib.messages',
     'django.contrib.staticfiles',
+    'drf_yasg',
+    'corsheaders',
+    'rest_framework',
+    'learngaugeapis',
 ]
 
 MIDDLEWARE = [
+    'corsheaders.middleware.CorsMiddleware',
     'django.middleware.security.SecurityMiddleware',
+    'whitenoise.middleware.WhiteNoiseMiddleware',
     'django.contrib.sessions.middleware.SessionMiddleware',
     'django.middleware.common.CommonMiddleware',
     'django.middleware.csrf.CsrfViewMiddleware',
@@ -73,13 +84,36 @@ WSGI_APPLICATION = 'learngauge.wsgi.application'
 # Database
 # https://docs.djangoproject.com/en/5.1/ref/settings/#databases
 
+DATABASE_ENGINE = config("DATABASE_ENGINE")
+DATABASE_NAME = config("DATABASE_NAME")
+DATABASE_USER = config("DATABASE_USER")
+DATABASE_PASSWORD = config("DATABASE_PASSWORD")
+DATABASE_HOST = config("DATABASE_HOST")
+DATABASE_PORT = config("DATABASE_PORT", 5432)
+
 DATABASES = {
     'default': {
-        'ENGINE': 'django.db.backends.sqlite3',
-        'NAME': BASE_DIR / 'db.sqlite3',
+        'ENGINE': f'django.db.backends.{DATABASE_ENGINE}',
+        'NAME': DATABASE_NAME,
+        'USER' : DATABASE_USER,
+        'PASSWORD': DATABASE_PASSWORD,
+        'HOST': DATABASE_HOST,
+        'PORT': DATABASE_PORT,
     }
 }
 
+REDIS_HOST = config("REDIS_HOST")
+REDIS_PORT = config("REDIS_PORT")
+REDIS_USERNAME = config("REDIS_USERNAME")
+REDIS_PASSWORD = config("REDIS_PASSWORD")
+REDIS_CONN_STR = f'redis://{REDIS_HOST}:{REDIS_PORT}' if REDIS_USERNAME == "" else f'redis://{REDIS_USERNAME}:{REDIS_PASSWORD}@{REDIS_HOST}:{REDIS_PORT}'
+
+CACHES = {
+    'default': {
+        'BACKEND': 'django_redis.cache.RedisCache',
+        'LOCATION': REDIS_CONN_STR,
+    }
+}
 
 # Password validation
 # https://docs.djangoproject.com/en/5.1/ref/settings/#auth-password-validators
@@ -121,3 +155,85 @@ STATIC_URL = 'static/'
 # https://docs.djangoproject.com/en/5.1/ref/settings/#default-auto-field
 
 DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
+
+SIMPLE_JWT = {
+    'ACCESS_TOKEN_LIFETIME': timedelta(minutes=180),
+    'REFRESH_TOKEN_LIFETIME': timedelta(days=30),
+    'ROTATE_REFRESH_TOKENS': True,
+    'BLACKLIST_AFTER_ROTATION': True,
+    'UPDATE_LAST_LOGIN': True,
+
+    'ALGORITHM': 'HS256',
+
+    'VERIFYING_KEY': None,
+    'AUDIENCE': None,
+    'ISSUER': None,
+    'JWK_URL': None,
+    'LEEWAY': 0,
+
+    'AUTH_HEADER_TYPES': ('Bearer',),
+    'AUTH_HEADER_NAME': 'HTTP_AUTHORIZATION',
+    'USER_ID_FIELD': 'id',
+    'USER_ID_CLAIM': 'user_id',
+    'USER_AUTHENTICATION_RULE': 'learngaugeapis.middlewares.custom_user_authentication_rule.custom_user_authentication_rule',
+
+    'AUTH_TOKEN_CLASSES': ('rest_framework_simplejwt.tokens.AccessToken',),
+    'TOKEN_TYPE_CLAIM': 'token_type',
+    'TOKEN_USER_CLASS': 'rest_framework_simplejwt.models.TokenUser',
+
+    'JTI_CLAIM': 'jti',
+
+    'SLIDING_TOKEN_REFRESH_EXP_CLAIM': 'refresh_exp',
+    'SLIDING_TOKEN_LIFETIME': timedelta(minutes=5),
+    'SLIDING_TOKEN_REFRESH_LIFETIME': timedelta(days=1),
+
+    'TOKEN_OBTAIN_SERIALIZER': 'learngaugeapis.serializers.custom_token_obtain_pair_serializer.CustomTokenObtainPairSerializer',
+    'TOKEN_REFRESH_SERIALIZER': 'learngaugeapis.serializers.custom_token_refresh_serializer.CustomTokenRefreshSerializer'
+}
+
+SWAGGER_SETTINGS = {
+    'SECURITY_DEFINITIONS': {
+        'Bearer': {
+            'type': 'apiKey',
+            'name': 'Authorization',
+            'in': 'header'
+        }
+    }
+}
+
+LOGGING = {
+    "version": 1,
+    "disable_existing_loggers": True,
+    'handlers': {
+        'logtail': {
+            'class': 'logtail.LogtailHandler',
+            'source_token': config("BETTERSTACK_LOG_TOKEN"),
+            'host': config("BETTERSTACK_LOG_HOST"),
+        },
+        "console": {
+            "class": "logging.StreamHandler",
+        },
+    },
+    "loggers": {
+        "": {
+            "handlers": [
+                "logtail",
+                "console"
+            ],
+            "level": "INFO",
+        },
+    },
+}
+
+EMAIL_BACKEND = 'django.core.mail.backends.smtp.EmailBackend'
+EMAIL_HOST = config("EMAIL_HOST")
+EMAIL_PORT = config("EMAIL_PORT")  
+EMAIL_USE_TLS = True  
+EMAIL_HOST_USER = config("EMAIL_HOST_USER")
+EMAIL_HOST_PASSWORD = config("EMAIL_HOST_PASSWORD")
+
+AUTH_USER_MODEL = 'learngaugeapis.User'
+
+# Firebase Configuration
+FIREBASE_CERTIFICATE = config("FIREBASE_CERTIFICATE", "firebase_cert.json")
+FIREBASE_STORAGE_BUCKET_URL = config("FIREBASE_STORAGE_BUCKET_URL")

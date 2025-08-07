@@ -1,0 +1,2 @@
+class UnVerifiedException(Exception): 
+    pass

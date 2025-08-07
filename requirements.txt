@@ -10,3 +10,4 @@ django_redis
 gunicorn
 whitenoise
 firebase_admin
+logtail-python
