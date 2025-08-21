@@ -8,4 +8,4 @@ class CLOType(Enum):
 
     @staticmethod
     def all():
-        return [CLOType.CLO1, CLOType.CLO2, CLOType.CLO3, CLOType.CLO4]
+        return [CLOType.CLO1.value, CLOType.CLO2.value, CLOType.CLO3.value, CLOType.CLO4.value]
