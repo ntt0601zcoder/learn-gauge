@@ -1,10 +1,10 @@
 from enum import Enum
 
-class CLOType(Enum):
-    CLO1 = "CLO1"
-    CLO2 = "CLO2"
-    CLO3 = "CLO3"
-    CLO4 = "CLO4"
+class ExamFormat(Enum):
+    ESSAY = "ESSAY"
+    PRACTICE = "PRACTICE"
+    WRITTEN = "WRITTEN"
+    MCQ = "MCQ"
 
     @classmethod
     def all(cls):
