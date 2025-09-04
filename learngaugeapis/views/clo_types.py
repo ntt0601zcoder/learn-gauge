@@ -1,5 +1,4 @@
 from rest_framework.viewsets import ViewSet
-from rest_framework.permissions import IsAuthenticated
 from rest_framework import status
 from learngaugeapis.const.clo_types import CLOType
 from learngaugeapis.helpers.response import RestResponse

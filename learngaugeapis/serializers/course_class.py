@@ -13,9 +13,6 @@ class CreateClassSerializer(serializers.Serializer):
     code = serializers.CharField(required=True)
     name = serializers.CharField(required=True)
     description = serializers.CharField(required=True)
-    max_number_of_students = serializers.IntegerField(required=True)
-    start_date = serializers.DateField(required=True)
-    schedule = serializers.JSONField(required=True)
     location = serializers.CharField(required=True)
     course_id = serializers.PrimaryKeyRelatedField(
         queryset=Course.objects.filter(deleted_at=None), 
@@ -25,10 +22,6 @@ class CreateClassSerializer(serializers.Serializer):
 class UpdateClassSerializer(serializers.Serializer):
     name = serializers.CharField(required=False)
     description = serializers.CharField(required=False)
-    max_number_of_students = serializers.IntegerField(required=False)
-    start_date = serializers.DateField(required=False)
-    schedule = serializers.JSONField(required=False)
-    location = serializers.CharField(required=False)
     course_id = serializers.PrimaryKeyRelatedField(
         queryset=Course.objects.filter(deleted_at=None), 
         required=False

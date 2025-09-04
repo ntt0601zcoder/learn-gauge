@@ -1,17 +1,21 @@
 import logging
+from tkinter import NO
+from drf_yasg import openapi
 from drf_yasg.utils import swagger_auto_schema
 
 from rest_framework import viewsets, status
 
 from learngaugeapis.helpers.response import RestResponse
+from learngaugeapis.helpers.paginator import CustomPageNumberPagination
 from learngaugeapis.middlewares.permissions import IsRoot
 from learngaugeapis.middlewares.authentication import UserAuthentication
 from learngaugeapis.models.user import User, UserRole, UserStatus
-from learngaugeapis.serializers.user import CreateUserSerializer
+from learngaugeapis.serializers.user import CreateUserSerializer, UserSerializer
 
 class RootUserView(viewsets.ViewSet):
     authentication_classes = (UserAuthentication, )
     permission_classes = (IsRoot, )
+    paginator = CustomPageNumberPagination()
 
     @swagger_auto_schema(request_body=CreateUserSerializer)
     def create(self, request):
@@ -42,3 +46,43 @@ class RootUserView(viewsets.ViewSet):
         except Exception as e:
             logging.getLogger().exception("RootUserView.create exc=%s, req=%s", e, request.data)
             return RestResponse(data={"error": str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR).response
+
+    @swagger_auto_schema(
+        responses={200: UserSerializer(many=True)},
+        manual_parameters=[
+            openapi.Parameter(
+                name="role",
+                in_="query",
+                type=openapi.TYPE_STRING,
+                required=False
+            ),
+            openapi.Parameter(
+                name="size",
+                in_="query",
+                type=openapi.TYPE_INTEGER,
+                required=False
+            ),
+            openapi.Parameter(
+                name="page",
+                in_="query",
+                type=openapi.TYPE_INTEGER,
+                required=False
+            )
+        ]
+    )
+    def list(self, request):
+        try:
+            logging.getLogger().info("RootUserView.list req=%s", request.query_params)
+            users = User.objects.all().order_by("-created_at")
+            role = request.query_params.get("role", None)
+
+            if role:
+                users = users.filter(role=role)
+
+            users = self.paginator.paginate_queryset(users, request)
+
+            serializer = UserSerializer(users, many=True)
+            return RestResponse(status=status.HTTP_200_OK, data=self.paginator.get_paginated_data(serializer.data)).response
+        except Exception as e:
+            logging.getLogger().exception("RootUserView.list exc=%s, req=%s", e, request.query_params)
+            return RestResponse(status=status.HTTP_500_INTERNAL_SERVER_ERROR).response

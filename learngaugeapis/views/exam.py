@@ -2,9 +2,11 @@ import logging
 from datetime import datetime
 from rest_framework.viewsets import ViewSet
 from rest_framework import status
+from drf_yasg import openapi
 from drf_yasg.utils import swagger_auto_schema
 
 from learngaugeapis.helpers.response import RestResponse
+from learngaugeapis.helpers.paginator import CustomPageNumberPagination
 from learngaugeapis.middlewares.authentication import UserAuthentication
 from learngaugeapis.middlewares.permissions import IsRoot
 from learngaugeapis.models.exam import Exam
@@ -12,18 +14,37 @@ from learngaugeapis.serializers.exam import CreateExamSerializer, ExamSerializer
 
 class ExamView(ViewSet):
     authentication_classes = [UserAuthentication]
+    paginator = CustomPageNumberPagination()
 
     def get_permissions(self):
         if self.action in ['create', 'update', 'destroy']:
             return [IsRoot()]
         return []
     
+    @swagger_auto_schema(
+        responses={200: ExamSerializer(many=True)},
+        manual_parameters=[
+            openapi.Parameter(
+                name="size",
+                in_="query",
+                type=openapi.TYPE_INTEGER,
+                required=False
+            ),
+            openapi.Parameter(
+                name="page",
+                in_="query",
+                type=openapi.TYPE_INTEGER,
+                required=False
+            )
+        ]
+    )
     def list(self, request):
         try:
             logging.getLogger().info("ExamView.list params=%s", request.query_params)
-            exams = Exam.objects.filter(deleted_at=None)
+            exams = Exam.objects.filter(deleted_at=None).order_by("-created_at")
+            exams = self.paginator.paginate_queryset(exams, request)
             serializer = ExamSerializer(exams, many=True)
-            return RestResponse(status=status.HTTP_200_OK, data=serializer.data).response
+            return RestResponse(status=status.HTTP_200_OK, data=self.paginator.get_paginated_data(serializer.data)).response
         except Exception as e:
             logging.getLogger().error("ExamView.list exc=%s", str(e))
             return RestResponse(status=status.HTTP_500_INTERNAL_SERVER_ERROR).response

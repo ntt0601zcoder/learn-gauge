@@ -2,9 +2,11 @@ import logging
 import datetime
 from rest_framework import status
 from rest_framework.viewsets import ViewSet
+from drf_yasg import openapi
 from drf_yasg.utils import swagger_auto_schema
 
 from learngaugeapis.helpers.response import RestResponse
+from learngaugeapis.helpers.paginator import CustomPageNumberPagination
 from learngaugeapis.middlewares.authentication import UserAuthentication
 from learngaugeapis.middlewares.permissions import IsRoot
 from learngaugeapis.models.course import Course
@@ -12,17 +14,37 @@ from learngaugeapis.serializers.course import CourseSerializer, CreateCourseSeri
 
 class CourseView(ViewSet):
     authentication_classes = [UserAuthentication]
+    paginator = CustomPageNumberPagination()
 
     def get_permissions(self):
         if self.action in ['create', 'update', 'destroy']:
             return [IsRoot()]
         return []
     
+    @swagger_auto_schema(
+        responses={200: CourseSerializer(many=True)},
+        manual_parameters=[
+            openapi.Parameter(
+                name="size",
+                in_="query",
+                type=openapi.TYPE_INTEGER,
+                required=False
+            ),
+            openapi.Parameter(
+                name="page",
+                in_="query",
+                type=openapi.TYPE_INTEGER,
+                required=False
+            )
+        ]
+    )
     def list(self, request):
         try:
             logging.getLogger().info("CourseView.list req=%s", request.data)
-            courses = Course.objects.filter(deleted_at=None)
-            return RestResponse(status=status.HTTP_200_OK, data=CourseSerializer(courses, many=True).data).response
+            courses = Course.objects.filter(deleted_at=None).order_by("-created_at")
+            courses = self.paginator.paginate_queryset(courses, request)
+            serializer = CourseSerializer(courses, many=True)
+            return RestResponse(status=status.HTTP_200_OK, data=self.paginator.get_paginated_data(serializer.data)).response
         except Exception as e:
             logging.getLogger().exception("CourseView.list exc=%s, req=%s", str(e), request.data)
             return RestResponse(status=status.HTTP_500_INTERNAL_SERVER_ERROR).response
