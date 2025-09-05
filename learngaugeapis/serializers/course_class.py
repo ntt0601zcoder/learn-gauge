@@ -13,7 +13,6 @@ class CreateClassSerializer(serializers.Serializer):
     code = serializers.CharField(required=True)
     name = serializers.CharField(required=True)
     description = serializers.CharField(required=True)
-    location = serializers.CharField(required=True)
     course_id = serializers.PrimaryKeyRelatedField(
         queryset=Course.objects.filter(deleted_at=None), 
         required=True
