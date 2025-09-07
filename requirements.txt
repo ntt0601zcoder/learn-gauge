@@ -11,3 +11,5 @@ whitenoise
 firebase_admin
 logtail-python
 psycopg2
+pandas
+openpyxl

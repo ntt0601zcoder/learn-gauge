@@ -2,11 +2,11 @@ from django.db import models
 
 from learngaugeapis.const.clo_types import CLOType
 from learngaugeapis.const.exam_formats import ExamFormat
-from learngaugeapis.models.course import Course
+from learngaugeapis.models.course_class import Class
 
 class Exam(models.Model):
     id = models.AutoField(primary_key=True)
-    course_id = models.ForeignKey(Course, on_delete=models.CASCADE, related_name='exams')
+    class_id = models.ForeignKey(Class, on_delete=models.CASCADE, related_name='exams')
     name = models.CharField(max_length=255)
     description = models.TextField(null=True, default=None)
     clo_type = models.CharField(max_length=255, choices=CLOType.all())

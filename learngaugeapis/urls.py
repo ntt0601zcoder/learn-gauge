@@ -12,6 +12,7 @@ from learngaugeapis.views.root_user import RootUserView
 from learngaugeapis.views.student import StudentView
 from learngaugeapis.views.user import UserView
 from learngaugeapis.views.clo_types import CLOTypeView
+from learngaugeapis.views.exam import ExamView
 
 router = SimpleRouter(trailing_slash=False)
 
@@ -25,6 +26,7 @@ router.register('majors', MajorView, "majors")
 router.register('classes', ClassView, "classes")
 router.register('courses', CourseView, "courses")
 router.register('clo-types', CLOTypeView, "clo_types")
+router.register('exams', ExamView, "exams")
 
 urlpatterns = [
    path('', include(router.urls)),
