@@ -35,6 +35,30 @@ class ClassView(ViewSet):
                 in_="query",
                 type=openapi.TYPE_INTEGER,
                 required=False
+            ),
+            openapi.Parameter(
+                name="course_id",
+                in_="query",
+                type=openapi.TYPE_INTEGER,
+                required=False
+            ),
+            openapi.Parameter(
+                name="name",
+                in_="query",
+                type=openapi.TYPE_STRING,
+                required=False
+            ),
+            openapi.Parameter(
+                name="semester",
+                in_="query",
+                type=openapi.TYPE_INTEGER,
+                required=False
+            ),
+            openapi.Parameter(
+                name="year",
+                in_="query",
+                type=openapi.TYPE_INTEGER,
+                required=False
             )
         ]
     )
@@ -42,6 +66,23 @@ class ClassView(ViewSet):
         try:
             logging.getLogger().info("ClassView.list req=%s", request.query_params)
             classes = Class.objects.filter(deleted_at=None).order_by("-created_at")
+
+            course_id = request.query_params.get("course_id", None)
+            if course_id:
+                classes = classes.filter(course_id=course_id)
+
+            name = request.query_params.get("name", None)
+            if name:
+                classes = classes.filter(name__icontains=name)
+
+            semester = request.query_params.get("semester", None)
+            if semester:
+                classes = classes.filter(semester=semester)
+
+            year = request.query_params.get("year", None)
+            if year:
+                classes = classes.filter(year=year)
+
             classes = self.paginator.paginate_queryset(classes, request)
             serializer = ClassSerializer(classes, many=True)
             return RestResponse(status=status.HTTP_200_OK, data=self.paginator.get_paginated_data(serializer.data)).response

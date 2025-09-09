@@ -35,6 +35,12 @@ class AcademicProgramView(ViewSet):
                 in_="query",
                 type=openapi.TYPE_INTEGER,
                 required=False
+            ),
+            openapi.Parameter(
+                name="name",
+                in_="query",
+                type=openapi.TYPE_STRING,
+                required=False
             )
         ]
     )
@@ -42,6 +48,11 @@ class AcademicProgramView(ViewSet):
         try:
             logging.getLogger().info("AcademicProgramView.list req=%s", request.query_params)
             academic_programs = AcademicProgram.objects.filter(deleted_at=None).order_by("-created_at")
+
+            name = request.query_params.get("name", None)
+            if name:
+                academic_programs = academic_programs.filter(name__icontains=name)
+                
             academic_programs = self.paginator.paginate_queryset(academic_programs, request)
             serializer = AcademicProgramSerializer(academic_programs, many=True)
             return RestResponse(status=status.HTTP_200_OK, data=self.paginator.get_paginated_data(serializer.data)).response

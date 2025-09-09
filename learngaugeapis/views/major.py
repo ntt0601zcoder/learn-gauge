@@ -35,6 +35,18 @@ class MajorView(ViewSet):
                 in_="query",
                 type=openapi.TYPE_INTEGER,
                 required=False
+            ),
+            openapi.Parameter(
+                name="academic_program_id",
+                in_="query",
+                type=openapi.TYPE_INTEGER,
+                required=False
+            ),
+            openapi.Parameter(
+                name="name",
+                in_="query",
+                type=openapi.TYPE_STRING,
+                required=False
             )
         ]
     )
@@ -42,6 +54,15 @@ class MajorView(ViewSet):
         try:
             logging.getLogger().info("MajorView.list req=%s", request.query_params)
             majors = Major.objects.filter(deleted_at=None).order_by("-created_at")
+
+            academic_program_id = request.query_params.get("academic_program_id", None)
+            if academic_program_id:
+                majors = majors.filter(academic_program_id=academic_program_id)
+
+            name = request.query_params.get("name", None)
+            if name:
+                majors = majors.filter(name__icontains=name)
+
             majors = self.paginator.paginate_queryset(majors, request)
             serializer = MajorSerializer(majors, many=True)
             return RestResponse(status=status.HTTP_200_OK, data=self.paginator.get_paginated_data(serializer.data)).response

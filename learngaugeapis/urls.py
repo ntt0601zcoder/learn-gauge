@@ -11,7 +11,7 @@ from learngaugeapis.views.major import MajorView
 from learngaugeapis.views.root_user import RootUserView
 from learngaugeapis.views.student import StudentView
 from learngaugeapis.views.user import UserView
-from learngaugeapis.views.clo_types import CLOTypeView
+from learngaugeapis.views.clo_type import CLOTypeView
 from learngaugeapis.views.exam import ExamView
 
 router = SimpleRouter(trailing_slash=False)
