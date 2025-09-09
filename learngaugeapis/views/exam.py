@@ -20,13 +20,13 @@ from learngaugeapis.serializers.exam_results import UploadExamResultSerializer
 from learngaugeapis.errors.exceptions import InvalidFileContentException
 
 class ExamView(ViewSet):
-    authentication_classes = [UserAuthentication]
+    # authentication_classes = [UserAuthentication]
     paginator = CustomPageNumberPagination()
 
-    def get_permissions(self):
-        if self.action in ['create', 'update', 'destroy']:
-            return [IsRoot()]
-        return []
+    # def get_permissions(self):
+    #     if self.action in ['create', 'update', 'destroy']:
+    #         return [IsRoot()]
+    #     return []
     
     @swagger_auto_schema(
         responses={200: ExamSerializer(many=True)},
@@ -134,7 +134,7 @@ class ExamView(ViewSet):
 
             validated_data = serializer.validated_data
 
-            course  = Course.objects.get(classes=validated_data['class_id'])
+            course  = Course.objects.get(classes=validated_data['course_class'])
             answer_file = validated_data.pop('answer_file')
             classification_file = validated_data.pop('classification_file')
             student_answer_file = validated_data.pop('student_answer_file')
@@ -145,7 +145,13 @@ class ExamView(ViewSet):
 
             self.__validate_exam_result_data(course.code, answer_data, classification_data, student_answer_data)
 
-            return RestResponse(status=status.HTTP_200_OK).response
+            testdata = {
+                "answer_data": answer_data,
+                "classification_data": classification_data,
+                "student_answer_data": student_answer_data
+            }
+
+            return RestResponse(status=status.HTTP_200_OK, data=testdata).response
         except Course.DoesNotExist:
             return RestResponse(status=status.HTTP_404_NOT_FOUND, data="Không tìm thấy học phần tương ứng!").response
         except InvalidFileContentException as e:
@@ -155,7 +161,7 @@ class ExamView(ViewSet):
             return RestResponse(status=status.HTTP_500_INTERNAL_SERVER_ERROR).response
 
     def __validate_exam_result_data(self, course_code, answer_data, classification_data, student_answer_data):
-        if len(answer_data) != len(classification_data):
+        if len(answer_data["questions"]) != len(classification_data):
             raise InvalidFileContentException("Số lượng câu hỏi trong file đáp án và file câu hỏi - chương không khớp!")
 
         unique_student_question_codes = set()
@@ -164,7 +170,7 @@ class ExamView(ViewSet):
             for question_code in student_data['answers'].keys():
                 unique_student_question_codes.add(question_code)
 
-        unknown_question_codes = unique_student_question_codes - set(answer_data.keys())
+        unknown_question_codes = unique_student_question_codes - set(answer_data["questions"].keys())
 
         if unknown_question_codes:
             raise InvalidFileContentException(f"Có các câu hỏi trong file đáp án của sinh viên không tồn tại trong file đáp án: {', '.join(unknown_question_codes)}")
@@ -184,7 +190,10 @@ class ExamView(ViewSet):
         df.columns = df.columns.map(str.lower)
         df = df.rename(columns={'mã': 'question_code', 'đáp án đúng': 'correct_answer'})
 
-        data = {}
+        data = {
+            "questions": {},
+            "exams": {},
+        }
         duplicate_question_codes = set()
         course_codes = set()
         invalid_question_codes = set()
@@ -201,13 +210,25 @@ class ExamView(ViewSet):
 
             course_codes.add(row['question_code'][:-7].lower())
 
-            data[row['question_code']] = {
+            data["questions"][row['question_code']] = {
                 "correct_answer": row['correct_answer'],
                 "difficulty": row['question_code'][-1].lower(),
                 "no": row['question_code'][-4:-1].lower(),
                 "no_exam": row['question_code'][-7:-4].lower(),
                 "course_code": row['question_code'][:-7].lower(),
             }
+            
+            if row['question_code'][-7:-4].lower() not in data["exams"]:
+                data["exams"][row['question_code'][-7:-4].lower()] = {
+                    "number_of_questions": 1,
+                }
+            else:
+                data["exams"][row['question_code'][-7:-4].lower()]["number_of_questions"] += 1
+
+        all_exams_have_same_number_of_questions = all(data["exams"][exam]["number_of_questions"] == data["exams"][list(data["exams"].keys())[0]]["number_of_questions"] for exam in data["exams"])
+
+        if not all_exams_have_same_number_of_questions:
+            raise InvalidFileContentException(f"Các mã đề thi có số lượng câu hỏi không tương đồng!")
 
         if duplicate_question_codes:
             raise InvalidFileContentException(f"File đáp án có {len(duplicate_question_codes)} mã câu hỏi bị trùng lặp: {', '.join(duplicate_question_codes)}")
@@ -282,7 +303,7 @@ class ExamView(ViewSet):
             no_exam = set()
             data[student_id] = {}
             data[student_id]["answers"] = answers
-            data[student_id]["number_of_questions"] = len(answers)
+            data[student_id]["number_of_answers"] = len(answers)
 
             for question_code, answer in answers.items():
                 _course_code = question_code[:-7].lower()
