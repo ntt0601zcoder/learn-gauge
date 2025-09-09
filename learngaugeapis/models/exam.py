@@ -6,7 +6,7 @@ from learngaugeapis.models.clo_type import CLOType
 
 class Exam(models.Model):
     id = models.AutoField(primary_key=True)
-    class_id = models.ForeignKey(Class, on_delete=models.CASCADE, related_name='exams')
+    course_class = models.ForeignKey(Class, on_delete=models.CASCADE, related_name='exams')
     name = models.CharField(max_length=255)
     description = models.TextField(null=True, default=None)
     clo_type = models.ForeignKey(CLOType, on_delete=models.CASCADE, related_name='exams')

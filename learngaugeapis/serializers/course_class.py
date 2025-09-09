@@ -2,6 +2,7 @@ from rest_framework import serializers
 
 from learngaugeapis.models.course import Course
 from learngaugeapis.models.course_class import Class
+from learngaugeapis.models.user import User, UserRole, UserStatus
 
 class ClassSerializer(serializers.ModelSerializer):
     class Meta:
@@ -15,9 +16,13 @@ class CreateClassSerializer(serializers.Serializer):
     semester = serializers.IntegerField(required=True)
     year = serializers.IntegerField(required=True)
     description = serializers.CharField(required=True)
-    course_id = serializers.PrimaryKeyRelatedField(
+    course = serializers.PrimaryKeyRelatedField(
         queryset=Course.objects.filter(deleted_at=None), 
         required=True
+    )
+    teacher = serializers.PrimaryKeyRelatedField(
+        queryset=User.objects.filter(status=UserStatus.ACTIVATED, role=UserRole.TEACHER), 
+        required=False
     )
 
 class UpdateClassSerializer(serializers.Serializer):
@@ -25,7 +30,11 @@ class UpdateClassSerializer(serializers.Serializer):
     semester = serializers.IntegerField(required=False)
     year = serializers.IntegerField(required=False)
     description = serializers.CharField(required=False)
-    course_id = serializers.PrimaryKeyRelatedField(
+    course = serializers.PrimaryKeyRelatedField(
         queryset=Course.objects.filter(deleted_at=None), 
+        required=False
+    )
+    teacher = serializers.PrimaryKeyRelatedField(
+        queryset=User.objects.filter(status=UserStatus.ACTIVATED, role=UserRole.TEACHER), 
         required=False
     )

@@ -11,7 +11,7 @@ class ExamSerializer(serializers.ModelSerializer):
         fields = '__all__'
 
 class CreateExamSerializer(serializers.Serializer):
-    class_id = serializers.PrimaryKeyRelatedField(queryset=Class.objects.filter(deleted_at=None))
+    course_class = serializers.PrimaryKeyRelatedField(queryset=Class.objects.filter(deleted_at=None))
     name = serializers.CharField()
     description = serializers.CharField()
     clo_type = serializers.PrimaryKeyRelatedField(queryset=CLOType.objects.filter(deleted_at=None))
@@ -19,7 +19,7 @@ class CreateExamSerializer(serializers.Serializer):
     chapters = serializers.ListField(child=serializers.IntegerField(min_value=1, max_value=100))
     
 class UpdateExamSerializer(serializers.Serializer):
-    class_id = serializers.PrimaryKeyRelatedField(queryset=Class.objects.filter(deleted_at=None), required=False)
+    course_class = serializers.PrimaryKeyRelatedField(queryset=Class.objects.filter(deleted_at=None), required=False)
     name = serializers.CharField(required=False)
     description = serializers.CharField(required=False)
     clo_type = serializers.PrimaryKeyRelatedField(queryset=CLOType.objects.filter(deleted_at=None), required=False)

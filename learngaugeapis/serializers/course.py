@@ -14,7 +14,7 @@ class CreateCourseSerializer(serializers.Serializer):
     name = serializers.CharField(required=True)
     number_of_credits = serializers.IntegerField(required=True, min_value=1)
     description = serializers.CharField(required=True)
-    major_id = serializers.PrimaryKeyRelatedField(
+    major = serializers.PrimaryKeyRelatedField(
         queryset=Major.objects.filter(deleted_at=None), 
         required=True
     )
@@ -24,7 +24,7 @@ class UpdateCourseSerializer(serializers.Serializer):
     name = serializers.CharField(required=False)
     number_of_credits = serializers.IntegerField(required=False, min_value=1)
     description = serializers.CharField(required=False)
-    major_id = serializers.PrimaryKeyRelatedField(
+    major = serializers.PrimaryKeyRelatedField(
         queryset=Major.objects.filter(deleted_at=None), 
         required=False
     )

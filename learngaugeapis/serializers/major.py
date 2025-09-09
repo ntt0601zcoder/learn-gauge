@@ -12,7 +12,7 @@ class CreateMajorSerializer(serializers.Serializer):
     code = serializers.CharField(required=True)
     name = serializers.CharField(required=True)
     description = serializers.CharField(required=True)
-    academic_program_id = serializers.PrimaryKeyRelatedField(
+    academic_program = serializers.PrimaryKeyRelatedField(
         queryset=AcademicProgram.objects.filter(deleted_at=None), 
         required=True
     )
@@ -21,7 +21,7 @@ class UpdateMajorSerializer(serializers.Serializer):
     code = serializers.CharField(required=False)
     name = serializers.CharField(required=False)
     description = serializers.CharField(required=False)
-    academic_program_id = serializers.PrimaryKeyRelatedField(
+    academic_program = serializers.PrimaryKeyRelatedField(
         queryset=AcademicProgram.objects.filter(deleted_at=None), 
         required=False
     )

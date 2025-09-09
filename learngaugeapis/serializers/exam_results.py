@@ -10,7 +10,6 @@ def validate_file_extension(file):
     if ext not in valid_extensions:
         raise serializers.ValidationError("Chỉ cho phép file .xlsx hoặc .csv.")
 
-
 class UploadExamResultSerializer(CreateExamSerializer):
     answer_file = serializers.FileField(validators=[validate_file_extension])
     classification_file = serializers.FileField(validators=[validate_file_extension])
