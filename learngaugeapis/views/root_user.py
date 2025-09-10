@@ -86,3 +86,15 @@ class RootUserView(viewsets.ViewSet):
         except Exception as e:
             logging.getLogger().exception("RootUserView.list exc=%s, req=%s", e, request.query_params)
             return RestResponse(status=status.HTTP_500_INTERNAL_SERVER_ERROR).response
+
+    def retrieve(self, request, pk=None):
+        try:
+            logging.getLogger().info("RootUserView.retrieve pk=%s, req=%s", pk, request.query_params)
+            user = User.objects.get(pk=pk)
+            serializer = UserSerializer(user)
+            return RestResponse(status=status.HTTP_200_OK, data=serializer.data).response
+        except User.DoesNotExist:
+            return RestResponse(status=status.HTTP_404_NOT_FOUND).response
+        except Exception as e:
+            logging.getLogger().exception("RootUserView.retrieve exc=%s, pk=%s, req=%s", e, pk, request.query_params)
+            return RestResponse(status=status.HTTP_500_INTERNAL_SERVER_ERROR).response
