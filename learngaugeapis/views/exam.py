@@ -144,6 +144,7 @@ class ExamView(ViewSet):
             student_answer_data = self.__load_and_validate_student_answer_file(course.code, student_answer_file)
 
             self.__validate_exam_result_data(course.code, answer_data, classification_data, student_answer_data)
+            self.__consolidate_exam_result_data(course.code, answer_data, classification_data, student_answer_data)
 
             testdata = {
                 "answer_data": answer_data,
@@ -159,6 +160,24 @@ class ExamView(ViewSet):
         except Exception as e:
             logging.getLogger().error("ExamView.upload_exam_results exc=%s", str(e))
             return RestResponse(status=status.HTTP_500_INTERNAL_SERVER_ERROR).response
+
+    def __consolidate_exam_result_data(self, course_code, answer_data, classification_data, student_answer_data):
+        for _, student_data in student_answer_data.items():
+            student_data["number_of_correct_easy_questions"] = 0
+            student_data["number_of_correct_medium_questions"] = 0
+            student_data["number_of_correct_difficult_questions"] = 0
+            student_data["number_of_correct_questions"] = 0
+
+            for question_code, answer in student_data['answers'].items():
+                if answer == answer_data["questions"][question_code]["correct_answer"]:
+                    student_data["number_of_correct_questions"] += 1
+                    
+                    if answer_data["questions"][question_code]["difficulty"] == "d":
+                        student_data["number_of_correct_easy_questions"] += 1
+                    elif answer_data["questions"][question_code]["difficulty"] == "m":
+                        student_data["number_of_correct_medium_questions"] += 1
+                    elif answer_data["questions"][question_code]["difficulty"] == "t":
+                        student_data["number_of_correct_difficult_questions"] += 1
 
     def __validate_exam_result_data(self, course_code, answer_data, classification_data, student_answer_data):
         if len(answer_data["questions"]) != len(classification_data):
@@ -214,7 +233,7 @@ class ExamView(ViewSet):
                 "correct_answer": row['correct_answer'],
                 "difficulty": row['question_code'][-1].lower(),
                 "no": row['question_code'][-4:-1].lower(),
-                "no_exam": row['question_code'][-7:-4].lower(),
+                "version": row['question_code'][-7:-4].lower(),
                 "course_code": row['question_code'][:-7].lower(),
             }
             
@@ -300,10 +319,10 @@ class ExamView(ViewSet):
             if student_id in data:
                 student_ids.add(student_id)
 
-            no_exam = set()
+            version = set()
             data[student_id] = {}
             data[student_id]["answers"] = answers
-            data[student_id]["number_of_answers"] = len(answers)
+            data[student_id]["number_of_questions"] = len(answers)
 
             for question_code, answer in answers.items():
                 _course_code = question_code[:-7].lower()
@@ -312,10 +331,10 @@ class ExamView(ViewSet):
                     invalid_question_codes.add(question_code[:-7].lower())
 
                 course_codes.add(question_code[:-7].lower())
-                no_exam.add(question_code[-7:-4].lower())
+                version.add(question_code[-7:-4].lower())
 
-            if len(no_exam) > 1:
-                raise InvalidFileContentException(f"File đáp án của sinh viên {student_id} có các câu không thuộc cùng 1 mã đề thi: {', '.join(no_exam)}")
+            if len(version) > 1:
+                raise InvalidFileContentException(f"File đáp án của sinh viên {student_id} có các câu không thuộc cùng 1 mã đề thi: {', '.join(version)}")
 
         if student_ids:
             raise InvalidFileContentException(f"Có {len(student_ids)} mã sinh viên bị trùng lặp: {student_ids.join(', ')}")

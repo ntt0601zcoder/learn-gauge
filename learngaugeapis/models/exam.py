@@ -14,6 +14,7 @@ class Exam(models.Model):
     chapters = models.JSONField(default=list) # Example: [1, 2, 3]
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
+    deleted_at = models.DateTimeField(null=True, default=None)
 
     class Meta:
         db_table = 'exams'
