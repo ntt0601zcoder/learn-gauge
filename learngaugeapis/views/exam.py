@@ -8,6 +8,7 @@ from rest_framework.decorators import action
 from rest_framework.parsers import MultiPartParser
 import pandas as pd
 import numpy as np
+from django.db import transaction
 
 from learngaugeapis.helpers.response import RestResponse
 from learngaugeapis.helpers.paginator import CustomPageNumberPagination
@@ -15,18 +16,19 @@ from learngaugeapis.middlewares.authentication import UserAuthentication
 from learngaugeapis.middlewares.permissions import IsRoot
 from learngaugeapis.models.course import Course
 from learngaugeapis.models.exam import Exam
+from learngaugeapis.models.exam_result import ExamResult
 from learngaugeapis.serializers.exam import CreateExamSerializer, ExamSerializer, UpdateExamSerializer
 from learngaugeapis.serializers.exam_results import UploadExamResultSerializer
 from learngaugeapis.errors.exceptions import InvalidFileContentException
 
 class ExamView(ViewSet):
-    # authentication_classes = [UserAuthentication]
+    authentication_classes = [UserAuthentication]
     paginator = CustomPageNumberPagination()
 
-    # def get_permissions(self):
-    #     if self.action in ['create', 'update', 'destroy']:
-    #         return [IsRoot()]
-    #     return []
+    def get_permissions(self):
+        if self.action in ['create', 'update', 'destroy']:
+            return [IsRoot()]
+        return []
     
     @swagger_auto_schema(
         responses={200: ExamSerializer(many=True)},
@@ -146,13 +148,36 @@ class ExamView(ViewSet):
             self.__validate_exam_result_data(course.code, answer_data, classification_data, student_answer_data)
             self.__consolidate_exam_result_data(course.code, answer_data, classification_data, student_answer_data)
 
-            testdata = {
-                "answer_data": answer_data,
-                "classification_data": classification_data,
-                "student_answer_data": student_answer_data
-            }
+            with transaction.atomic():
+                exam = Exam.objects.create(
+                    course_class=validated_data['course_class'],
+                    name=validated_data["name"],
+                    description=validated_data["description"],
+                    clo_type=validated_data["clo_type"],
+                    exam_format=validated_data["exam_format"],
+                    chapters=validated_data["chapters"],
+                )
 
-            return RestResponse(status=status.HTTP_200_OK, data=testdata).response
+                exam_results = []
+
+                for student_code, student_data in student_answer_data.items():
+                    print(student_data)
+                    exam_results.append(
+                        ExamResult(
+                            student_code=student_code,
+                            exam=exam,
+                            total_questions=student_data["number_of_questions"],
+                            total_easy_questions=student_data["number_of_easy_questions"],
+                            total_medium_questions=student_data["number_of_medium_questions"],
+                            total_hard_questions=student_data["number_of_correct_hard_questions"],
+                            total_correct_easy_questions=student_data["number_of_correct_easy_questions"],
+                            total_correct_medium_questions=student_data["number_of_correct_medium_questions"],
+                            total_correct_hard_questions=student_data["number_of_correct_hard_questions"],
+                        )
+                    )
+                
+                ExamResult.objects.bulk_create(exam_results)
+            return RestResponse(status=status.HTTP_200_OK, data=ExamSerializer(exam).data).response
         except Course.DoesNotExist:
             return RestResponse(status=status.HTTP_404_NOT_FOUND, data="Không tìm thấy học phần tương ứng!").response
         except InvalidFileContentException as e:
@@ -165,19 +190,33 @@ class ExamView(ViewSet):
         for _, student_data in student_answer_data.items():
             student_data["number_of_correct_easy_questions"] = 0
             student_data["number_of_correct_medium_questions"] = 0
-            student_data["number_of_correct_difficult_questions"] = 0
+            student_data["number_of_correct_hard_questions"] = 0
             student_data["number_of_correct_questions"] = 0
+            student_data["number_of_easy_questions"] = 0
+            student_data["number_of_medium_questions"] = 0
+            student_data["number_of_hard_questions"] = 0
 
             for question_code, answer in student_data['answers'].items():
-                if answer == answer_data["questions"][question_code]["correct_answer"]:
+                is_correct = answer == answer_data["questions"][question_code]["correct_answer"]
+                
+                if is_correct:
                     student_data["number_of_correct_questions"] += 1
                     
-                    if answer_data["questions"][question_code]["difficulty"] == "d":
+                if answer_data["questions"][question_code]["difficulty"] == "d":
+                    student_data["number_of_easy_questions"] += 1
+
+                    if is_correct:
                         student_data["number_of_correct_easy_questions"] += 1
-                    elif answer_data["questions"][question_code]["difficulty"] == "m":
+                elif answer_data["questions"][question_code]["difficulty"] == "t":
+                    student_data["number_of_medium_questions"] += 1
+
+                    if is_correct:
                         student_data["number_of_correct_medium_questions"] += 1
-                    elif answer_data["questions"][question_code]["difficulty"] == "t":
-                        student_data["number_of_correct_difficult_questions"] += 1
+                elif answer_data["questions"][question_code]["difficulty"] == "k":
+                    student_data["number_of_hard_questions"] += 1
+
+                    if is_correct:
+                        student_data["number_of_correct_hard_questions"] += 1
 
     def __validate_exam_result_data(self, course_code, answer_data, classification_data, student_answer_data):
         if len(answer_data["questions"]) != len(classification_data):

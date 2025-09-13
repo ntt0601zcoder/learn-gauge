@@ -4,8 +4,10 @@ from learngaugeapis.const.exam_formats import ExamFormat
 from learngaugeapis.models.course_class import Class
 from learngaugeapis.models.exam import Exam
 from learngaugeapis.models.clo_type import CLOType
+from learngaugeapis.serializers.exam_result import ExamResultSerializer
 
 class ExamSerializer(serializers.ModelSerializer):
+    exam_results = ExamResultSerializer(many=True, read_only=True)
     class Meta:
         model = Exam
         fields = '__all__'
