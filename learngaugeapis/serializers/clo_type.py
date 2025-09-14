@@ -2,11 +2,19 @@ from rest_framework import serializers
 
 from learngaugeapis.models.clo_type import CLOType
 from learngaugeapis.models.course import Course
+from learngaugeapis.serializers.course import CourseSerializer
 
 class CLOTypeSerializer(serializers.ModelSerializer):
+    metadata = serializers.SerializerMethodField()
+
     class Meta:
         model = CLOType
         fields = '__all__'
+
+    def get_metadata(self, obj: CLOType):
+        return {
+            "course": CourseSerializer(obj.course).data,
+        }
 
 class CreateCLOTypeSerializer(serializers.Serializer):
     code = serializers.CharField(required=True)
