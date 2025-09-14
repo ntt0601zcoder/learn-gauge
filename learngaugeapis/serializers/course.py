@@ -18,6 +18,7 @@ class CreateCourseSerializer(serializers.Serializer):
         queryset=Major.objects.filter(deleted_at=None), 
         required=True
     )
+    clo_weight = serializers.IntegerField(required=True, min_value=0, max_value=100)
 
 class UpdateCourseSerializer(serializers.Serializer):
     code = serializers.CharField(required=False)
@@ -28,3 +29,4 @@ class UpdateCourseSerializer(serializers.Serializer):
         queryset=Major.objects.filter(deleted_at=None), 
         required=False
     )
+    clo_weight = serializers.IntegerField(required=False, min_value=0, max_value=100)

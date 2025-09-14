@@ -13,8 +13,10 @@ class CreateCLOTypeSerializer(serializers.Serializer):
     name = serializers.CharField(required=True)
     description = serializers.CharField(required=True)
     course = serializers.PrimaryKeyRelatedField(queryset=Course.objects.filter(deleted_at=None), required=True)
+    is_evaluation = serializers.IntegerField(required=True, min_value=0, max_value=1)
 
 class UpdateCLOTypeSerializer(serializers.Serializer):
     name = serializers.CharField(required=False)
     description = serializers.CharField(required=False)
     course = serializers.PrimaryKeyRelatedField(queryset=Course.objects.filter(deleted_at=None), required=False)
+    is_evaluation = serializers.IntegerField(required=False, min_value=0, max_value=1)

@@ -1,5 +1,5 @@
 from django.db import models
-from django.core.validators import MinValueValidator
+from django.core.validators import MinValueValidator, MaxValueValidator
 
 from learngaugeapis.models.major import Major
 
@@ -10,6 +10,7 @@ class Course(models.Model):
     name = models.CharField(max_length=255)
     number_of_credits = models.IntegerField(default=0, validators=[MinValueValidator(0)])
     description = models.TextField(null=True, default=None)
+    clo_weight = models.IntegerField(default=0, validators=[MinValueValidator(0), MaxValueValidator(100)])
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
     deleted_at = models.DateTimeField(null=True, default=None)
