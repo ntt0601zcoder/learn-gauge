@@ -20,6 +20,7 @@ class CreateCourseSerializer(serializers.Serializer):
     )
     clo_weight = serializers.IntegerField(required=True, min_value=0, max_value=100)
 
+
 class UpdateCourseSerializer(serializers.Serializer):
     code = serializers.CharField(required=False)
     name = serializers.CharField(required=False)

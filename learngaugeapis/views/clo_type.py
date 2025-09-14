@@ -1,5 +1,6 @@
 import logging
 from datetime import datetime
+from rest_framework.decorators import action
 from rest_framework.viewsets import ViewSet
 from rest_framework import status
 from drf_yasg import openapi
@@ -10,7 +11,7 @@ from learngaugeapis.middlewares.authentication import UserAuthentication
 from learngaugeapis.serializers.clo_type import CreateCLOTypeSerializer, CLOTypeSerializer, UpdateCLOTypeSerializer
 from learngaugeapis.middlewares.permissions import IsRoot
 from learngaugeapis.helpers.paginator import CustomPageNumberPagination
-
+from learngaugeapis.serializers.clo_type import BulkCreateCLOTypeSerializer
 
 class CLOTypeView(ViewSet):
     authentication_classes = [UserAuthentication]
@@ -94,6 +95,29 @@ class CLOTypeView(ViewSet):
             return RestResponse(status=status.HTTP_201_CREATED, data=CLOTypeSerializer(clo_type).data).response
         except Exception as e:
             logging.getLogger().exception("CLOTypeView.create exc=%s, req=%s", str(e), request.data)
+            return RestResponse(status=status.HTTP_500_INTERNAL_SERVER_ERROR).response
+
+    @swagger_auto_schema(request_body=BulkCreateCLOTypeSerializer)
+    @action(detail=False, methods=['post'], url_path='bulk')
+    def bulk_create(self, request):
+        try:
+            logging.getLogger().info("CLOTypeView.bulk_create req=%s", request.data)
+            serializer = BulkCreateCLOTypeSerializer(data=request.data)
+
+            if not serializer.is_valid():
+                return RestResponse(status=status.HTTP_400_BAD_REQUEST, data=serializer.errors).response
+
+            clo_types = CLOType.objects.bulk_create([
+                CLOType(
+                    **clo_type,
+                    course=serializer.validated_data['course']
+                )
+                for clo_type 
+                in serializer.validated_data['clo_types']
+            ])
+            return RestResponse(status=status.HTTP_201_CREATED, data=CLOTypeSerializer(clo_types, many=True).data).response
+        except Exception as e:
+            logging.getLogger().exception("CLOTypeView.bulk_create exc=%s, req=%s", str(e), request.data)
             return RestResponse(status=status.HTTP_500_INTERNAL_SERVER_ERROR).response
 
     @swagger_auto_schema(request_body=UpdateCLOTypeSerializer)
