@@ -36,6 +36,7 @@ class CreateExamSerializer(serializers.Serializer):
     exam_format = serializers.ChoiceField(choices=ExamFormat.all())
     chapters = serializers.ListField(child=serializers.IntegerField(min_value=1, max_value=100))
     pass_expectation_rate = serializers.IntegerField(min_value=0, max_value=100)
+    clo_pass_threshold = serializers.FloatField(min_value=0, max_value=10)
 class UpdateExamSerializer(serializers.Serializer):
     course_class = serializers.PrimaryKeyRelatedField(queryset=Class.objects.filter(deleted_at=None), required=False)
     name = serializers.CharField(required=False)
@@ -44,3 +45,4 @@ class UpdateExamSerializer(serializers.Serializer):
     exam_format = serializers.ChoiceField(choices=ExamFormat.all(), required=False)
     chapters = serializers.ListField(child=serializers.IntegerField(min_value=1, max_value=100), required=False)
     pass_expectation_rate = serializers.IntegerField(min_value=0, max_value=100, required=False)
+    clo_pass_threshold = serializers.FloatField(min_value=0, max_value=10, required=False)

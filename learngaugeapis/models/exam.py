@@ -14,6 +14,7 @@ class Exam(models.Model):
     exam_format = models.CharField(max_length=255, choices=ExamFormat.all())
     chapters = models.JSONField(default=list) # Example: [1, 2, 3]
     pass_expectation_rate = models.IntegerField(validators=[MinValueValidator(0), MaxValueValidator(100)])
+    clo_pass_threshold = models.FloatField(validators=[MinValueValidator(0), MaxValueValidator(10)])
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
     deleted_at = models.DateTimeField(null=True, default=None)
