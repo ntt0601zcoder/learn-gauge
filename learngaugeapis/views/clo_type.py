@@ -41,6 +41,12 @@ class CLOTypeView(ViewSet):
                 in_="query",
                 type=openapi.TYPE_STRING,
                 required=False
+            ),
+            openapi.Parameter(
+                name="course",
+                in_="query",
+                type=openapi.TYPE_INTEGER,
+                required=False
             )
         ]
     )   
@@ -52,6 +58,10 @@ class CLOTypeView(ViewSet):
             name = request.query_params.get("name", None)
             if name:
                 clo_types = clo_types.filter(name__icontains=name)
+
+            course = request.query_params.get("course", None)
+            if course:
+                clo_types = clo_types.filter(course__id=course)
 
             clo_types = self.paginator.paginate_queryset(clo_types, request)
             return RestResponse(status=status.HTTP_200_OK, data=CLOTypeSerializer(clo_types, many=True).data).response
