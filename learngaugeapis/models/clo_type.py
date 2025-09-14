@@ -3,7 +3,7 @@ from django.db import models
 from learngaugeapis.models.course import Course
 
 class CLOType(models.Model):
-    code = models.CharField(primary_key=True)
+    id = models.AutoField(primary_key=True)
     name = models.CharField(max_length=255)
     description = models.TextField()
     course = models.ForeignKey(Course, on_delete=models.CASCADE, related_name='clo_types')
