@@ -165,6 +165,7 @@ class ExamView(ViewSet):
                     exam_results.append(
                         ExamResult(
                             student_code=student_code,
+                            student_name=student_data["student_name"],
                             exam=exam,
                             total_questions=student_data["number_of_questions"],
                             total_easy_questions=student_data["number_of_easy_questions"],
@@ -360,6 +361,7 @@ class ExamView(ViewSet):
 
             version = set()
             data[student_id] = {}
+            data[student_id]["student_name"] = row['student_name']
             data[student_id]["answers"] = answers
             data[student_id]["number_of_questions"] = len(answers)
 

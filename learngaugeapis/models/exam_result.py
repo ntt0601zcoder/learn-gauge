@@ -5,6 +5,7 @@ from learngaugeapis.models.exam import Exam
 class ExamResult(models.Model):
     id = models.AutoField(primary_key=True)
     student_code = models.CharField(max_length=255)
+    student_name = models.CharField(max_length=255)
     exam = models.ForeignKey(Exam, on_delete=models.CASCADE, related_name='exam_results')
     total_questions = models.IntegerField(default=0)
     total_easy_questions = models.IntegerField(default=0)
