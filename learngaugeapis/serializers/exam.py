@@ -3,6 +3,7 @@ from rest_framework import serializers
 from learngaugeapis.const.exam_formats import ExamFormat
 from learngaugeapis.models.course_class import Class
 from learngaugeapis.models.exam import Exam
+from learngaugeapis.models.course import Course
 from learngaugeapis.models.clo_type import CLOType
 from learngaugeapis.serializers.exam_result import ExamResultSerializer
 from learngaugeapis.serializers.course_class import ClassSerializer
@@ -37,6 +38,19 @@ class CreateExamSerializer(serializers.Serializer):
     chapters = serializers.ListField(child=serializers.IntegerField(min_value=1, max_value=100))
     pass_expectation_rate = serializers.IntegerField(min_value=0, max_value=100)
     clo_pass_threshold = serializers.FloatField(min_value=0, max_value=10)
+
+    def validate(self, attrs):
+        _attrs = super().validate(attrs)
+        
+        course_class : Class = attrs['course_class']
+        course : Course = course_class.course
+        clo_type : CLOType = attrs['clo_type']
+
+        if clo_type.course != course:
+            raise serializers.ValidationError("CLO type must be from the same course!")
+
+        return _attrs
+
 class UpdateExamSerializer(serializers.Serializer):
     course_class = serializers.PrimaryKeyRelatedField(queryset=Class.objects.filter(deleted_at=None), required=False)
     name = serializers.CharField(required=False)
