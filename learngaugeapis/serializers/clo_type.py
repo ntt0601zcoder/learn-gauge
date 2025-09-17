@@ -21,13 +21,13 @@ class CreateCLOTypeSerializer(serializers.Serializer):
     description = serializers.CharField(required=True)
     course = serializers.PrimaryKeyRelatedField(queryset=Course.objects.filter(deleted_at=None), required=True)
     is_evaluation = serializers.IntegerField(required=True, min_value=0, max_value=1)
-
+    weight = serializers.IntegerField(required=True, min_value=0, max_value=100)
         
 class _CreateCLOTypeSerializer(serializers.Serializer):
     name = serializers.CharField(required=True)
     description = serializers.CharField(required=True)
     is_evaluation = serializers.IntegerField(required=True, min_value=0, max_value=1)
-
+    weight = serializers.IntegerField(required=True, min_value=0, max_value=100)
 class BulkCreateCLOTypeSerializer(serializers.Serializer):
     clo_types = _CreateCLOTypeSerializer(many=True)
     course = serializers.PrimaryKeyRelatedField(queryset=Course.objects.filter(deleted_at=None), required=True)
@@ -37,3 +37,4 @@ class UpdateCLOTypeSerializer(serializers.Serializer):
     description = serializers.CharField(required=False)
     course = serializers.PrimaryKeyRelatedField(queryset=Course.objects.filter(deleted_at=None), required=False)
     is_evaluation = serializers.IntegerField(required=False, min_value=0, max_value=1)
+    weight = serializers.IntegerField(required=False, min_value=0, max_value=100)

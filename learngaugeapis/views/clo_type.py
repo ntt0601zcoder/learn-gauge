@@ -48,6 +48,18 @@ class CLOTypeView(ViewSet):
                 in_="query",
                 type=openapi.TYPE_INTEGER,
                 required=False
+            ),
+            openapi.Parameter(
+                name="is_evaluation",
+                in_="query",
+                type=openapi.TYPE_BOOLEAN,
+                required=False
+            ),
+            openapi.Parameter(
+                name="class",
+                in_="query",
+                type=openapi.TYPE_INTEGER,
+                required=False
             )
         ]
     )   
@@ -63,6 +75,14 @@ class CLOTypeView(ViewSet):
             course = request.query_params.get("course", None)
             if course:
                 clo_types = clo_types.filter(course__id=course)
+
+            is_evaluation = request.query_params.get("is_evaluation", None)
+            if is_evaluation is not None:
+                clo_types = clo_types.filter(is_evaluation=bool(is_evaluation))
+
+            class_id = request.query_params.get("class", None)
+            if class_id:
+                clo_types = clo_types.filter(course__classes__id=class_id)
 
             clo_types = self.paginator.paginate_queryset(clo_types, request)
             return RestResponse(status=status.HTTP_200_OK, data=CLOTypeSerializer(clo_types, many=True).data).response
@@ -89,6 +109,11 @@ class CLOTypeView(ViewSet):
 
             if not serializer.is_valid():
                 return RestResponse(status=status.HTTP_400_BAD_REQUEST, data=serializer.errors).response
+
+            is_evaluation = serializer.validated_data.get('is_evaluation', False)
+
+            if is_evaluation and CLOType.objects.filter(course=serializer.validated_data.get('course'), is_evaluation=True).exists():
+                return RestResponse(status=status.HTTP_400_BAD_REQUEST, message="Đã có CLO đánh giá cho khóa học này!").response
             
             clo_type : CLOType = CLOType.objects.create(**serializer.validated_data)
             
@@ -106,6 +131,14 @@ class CLOTypeView(ViewSet):
 
             if not serializer.is_valid():
                 return RestResponse(status=status.HTTP_400_BAD_REQUEST, data=serializer.errors).response
+
+            number_of_evaluation_clo = sum(1 for clo_type in serializer.validated_data['clo_types'] if clo_type['is_evaluation'])
+
+            if number_of_evaluation_clo > 1:
+                return RestResponse(status=status.HTTP_400_BAD_REQUEST, message="Chỉ được tạo tối đa 1 CLO đánh giá cho khóa học này!").response
+
+            if number_of_evaluation_clo == 1 and CLOType.objects.filter(course=serializer.validated_data['course'], is_evaluation=True).exists():
+                return RestResponse(status=status.HTTP_400_BAD_REQUEST, message="Đã có CLO đánh giá cho khóa học này!").response
 
             clo_types = CLOType.objects.bulk_create([
                 CLOType(
@@ -129,6 +162,11 @@ class CLOTypeView(ViewSet):
 
             if not serializer.is_valid():
                 return RestResponse(status=status.HTTP_400_BAD_REQUEST, data=serializer.errors).response
+
+            is_evaluation = serializer.validated_data.get('is_evaluation', False)
+
+            if is_evaluation and CLOType.objects.filter(course=serializer.validated_data.get('course'), is_evaluation=True).exists():
+                return RestResponse(status=status.HTTP_400_BAD_REQUEST, message="Đã có CLO đánh giá cho khóa học này!").response
             
             for key, value in serializer.validated_data.items():
                 setattr(clo_type, key, value)

@@ -137,6 +137,10 @@ class ExamView(ViewSet):
             validated_data = serializer.validated_data
 
             course  = Course.objects.get(classes=validated_data['course_class'])
+
+            if not course.clo_types.filter(is_evaluation=True, deleted_at=None).exists():
+                return RestResponse(status=status.HTTP_400_BAD_REQUEST, message="Vui lòng cài đặt CLO đánh giá cho khóa học trước khi thực hiện thao tác này!").response
+
             answer_file = validated_data.pop('answer_file')
             classification_file = validated_data.pop('classification_file')
             student_answer_file = validated_data.pop('student_answer_file')
