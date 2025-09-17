@@ -44,6 +44,24 @@ class ExamView(ViewSet):
                 in_="query",
                 type=openapi.TYPE_INTEGER,
                 required=False
+            ),
+            openapi.Parameter(
+                name="class",
+                in_="query",
+                type=openapi.TYPE_INTEGER,
+                required=False
+            ),
+            openapi.Parameter(
+                name="course",
+                in_="query",
+                type=openapi.TYPE_INTEGER,
+                required=False
+            ),
+            openapi.Parameter(
+                name="clo_type",
+                in_="query",
+                type=openapi.TYPE_INTEGER,
+                required=False
             )
         ]
     )
@@ -51,6 +69,19 @@ class ExamView(ViewSet):
         try:
             logging.getLogger().info("ExamView.list params=%s", request.query_params)
             exams = Exam.objects.filter(deleted_at=None).order_by("-created_at")
+
+            class_id = request.query_params.get("class", None)
+            if class_id:
+                exams = exams.filter(course_class__id=class_id)
+
+            course_id = request.query_params.get("course", None)
+            if course_id:
+                exams = exams.filter(course_class__course__id=course_id)
+
+            clo_type_id = request.query_params.get("clo_type", None)
+            if clo_type_id:
+                exams = exams.filter(clo_type__id=clo_type_id)
+
             exams = self.paginator.paginate_queryset(exams, request)
             serializer = ExamSerializer(exams, many=True)
             return RestResponse(status=status.HTTP_200_OK, data=self.paginator.get_paginated_data(serializer.data)).response
