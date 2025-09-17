@@ -38,6 +38,7 @@ class CreateExamSerializer(serializers.Serializer):
     chapters = serializers.ListField(child=serializers.IntegerField(min_value=1, max_value=100))
     pass_expectation_rate = serializers.IntegerField(min_value=0, max_value=100)
     clo_pass_threshold = serializers.FloatField(min_value=0, max_value=10)
+    max_score = serializers.IntegerField(min_value=0)
 
     def validate(self, attrs):
         _attrs = super().validate(attrs)
@@ -60,3 +61,4 @@ class UpdateExamSerializer(serializers.Serializer):
     chapters = serializers.ListField(child=serializers.IntegerField(min_value=1, max_value=100), required=False)
     pass_expectation_rate = serializers.IntegerField(min_value=0, max_value=100, required=False)
     clo_pass_threshold = serializers.FloatField(min_value=0, max_value=10, required=False)
+    max_score = serializers.IntegerField(min_value=0, required=False)
