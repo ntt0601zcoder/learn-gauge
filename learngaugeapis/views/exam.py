@@ -62,6 +62,18 @@ class ExamView(ViewSet):
                 in_="query",
                 type=openapi.TYPE_INTEGER,
                 required=False
+            ),
+            openapi.Parameter(
+                name="start_year",
+                in_="query",
+                type=openapi.TYPE_INTEGER,
+                required=False
+            ),
+            openapi.Parameter(
+                name="semester",
+                in_="query",
+                type=openapi.TYPE_INTEGER,
+                required=False
             )
         ]
     )
@@ -81,6 +93,14 @@ class ExamView(ViewSet):
             clo_type_id = request.query_params.get("clo_type", None)
             if clo_type_id:
                 exams = exams.filter(clo_type__id=clo_type_id)
+
+            start_year = request.query_params.get("start_year", None)
+            if start_year:
+                exams = exams.filter(course_class__year=start_year)
+
+            semester = request.query_params.get("semester", None)
+            if semester:
+                exams = exams.filter(course_class__semester=semester)
 
             exams = self.paginator.paginate_queryset(exams, request)
             serializer = ExamSerializer(exams, many=True)
@@ -321,8 +341,8 @@ class ExamView(ViewSet):
 
         all_exams_have_same_number_of_questions = all(data["exams"][exam]["number_of_questions"] == data["exams"][list(data["exams"].keys())[0]]["number_of_questions"] for exam in data["exams"])
 
-        if not all_exams_have_same_number_of_questions:
-            raise InvalidFileContentException(f"Các mã đề thi có số lượng câu hỏi không tương đồng!")
+        # if not all_exams_have_same_number_of_questions:
+        #     raise InvalidFileContentException(f"Các mã đề thi có số lượng câu hỏi không tương đồng!")
 
         if duplicate_question_codes:
             raise InvalidFileContentException(f"File đáp án có {len(duplicate_question_codes)} mã câu hỏi bị trùng lặp: {', '.join(duplicate_question_codes)}")

@@ -21,12 +21,38 @@ class ExamSerializer(serializers.ModelSerializer):
         fields = '__all__'
 
     def get_metadata(self, obj: Exam):
+        total_students = obj.exam_results.count()
+
         return {
             "course_class": ClassSerializer(obj.course_class).data,
             "course": CourseSerializer(obj.course_class.course).data,
             "major": MajorSerializer(obj.course_class.course.major).data,
             "clo_type": CLOTypeSerializer(obj.clo_type).data,
             "academic_program": AcademicProgramSerializer(obj.course_class.course.major.academic_program).data,
+            "total_students": total_students,
+            "pass_rate": obj.exam_results.with_metrics().filter(is_passed=True).count() / total_students * 100,
+            "clo_classification": {
+                "A": {
+                    "count": obj.exam_results.with_metrics().filter(letter_grade="A").count(),
+                    "percentage": obj.exam_results.with_metrics().filter(letter_grade="A").count() / total_students * 100
+                },
+                "B": {
+                    "count": obj.exam_results.with_metrics().filter(letter_grade="B").count(),
+                    "percentage": obj.exam_results.with_metrics().filter(letter_grade="B").count() / total_students * 100
+                },
+                "C": {
+                    "count": obj.exam_results.with_metrics().filter(letter_grade="C").count(),
+                    "percentage": obj.exam_results.with_metrics().filter(letter_grade="C").count() / total_students * 100
+                },
+                "D": {
+                    "count": obj.exam_results.with_metrics().filter(letter_grade="D").count(),
+                    "percentage": obj.exam_results.with_metrics().filter(letter_grade="D").count() / total_students * 100
+                },
+                "F": {
+                    "count": obj.exam_results.with_metrics().filter(letter_grade="F").count(),
+                    "percentage": obj.exam_results.with_metrics().filter(letter_grade="F").count() / total_students * 100
+                }
+            }
         }
 
 class CreateExamSerializer(serializers.Serializer):
