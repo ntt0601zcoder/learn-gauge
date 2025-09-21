@@ -13,3 +13,4 @@ logtail-python
 psycopg2
 pandas
 openpyxl
+uvicorn

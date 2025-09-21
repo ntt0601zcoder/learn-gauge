@@ -237,6 +237,3 @@ AUTH_USER_MODEL = 'learngaugeapis.User'
 # Firebase Configuration
 FIREBASE_CERTIFICATE = config("FIREBASE_CERTIFICATE", "firebase_cert.json")
 FIREBASE_STORAGE_BUCKET_URL = config("FIREBASE_STORAGE_BUCKET_URL")
-
-PORT = config("PORT", 8000)
-print("PORT: ", PORT)
