@@ -13,9 +13,11 @@ from learngaugeapis.helpers.send_html_email import send_html_template_email
 from learngaugeapis.middlewares.authentication import UserAuthentication
 from learngaugeapis.models.user import User
 from learngaugeapis.serializers.user import ChangePasswordSerializer, UpdateUserSerializer, UserSerializer
+from learngaugeapis.helpers.paginator import CustomPageNumberPagination
 
 class UserView(viewsets.ViewSet):
     authentication_classes = (UserAuthentication, )
+    paginator = CustomPageNumberPagination()
 
     @swagger_auto_schema(
         responses={200: UserSerializer(many=True)},

@@ -15,7 +15,6 @@ from learngaugeapis.serializers.user import CreateUserSerializer, UpdateUserSeri
 
 
 class StudentView(viewsets.ViewSet):
-
     @swagger_auto_schema(request_body=CreateUserSerializer)
     def create(self, request):
         try:

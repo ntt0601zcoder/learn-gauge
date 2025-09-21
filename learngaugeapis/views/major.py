@@ -13,13 +13,13 @@ from learngaugeapis.models.major import Major
 from learngaugeapis.serializers.major import MajorSerializer, CreateMajorSerializer, UpdateMajorSerializer
 
 class MajorView(ViewSet):
-    # authentication_classes = [UserAuthentication]
+    authentication_classes = [UserAuthentication]
     paginator = CustomPageNumberPagination()
 
-    # def get_permissions(self):
-    #     if self.action in ['create', 'update', 'destroy']:
-    #         return [IsRoot()]
-    #     return []
+    def get_permissions(self):
+        if self.action in ['create', 'update', 'destroy']:
+            return [IsRoot()]
+        return []
     
     @swagger_auto_schema(
         responses={200: MajorSerializer(many=True)},
