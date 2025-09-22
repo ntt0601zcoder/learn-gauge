@@ -202,7 +202,7 @@ class ExamView(ViewSet):
 
             self.__validate_exam_result_data(course.code, answer_data, classification_data, student_answer_data)
             self.__consolidate_exam_result_data(course.code, answer_data, classification_data, student_answer_data)
-            return RestResponse(status=status.HTTP_200_OK).response
+
             with transaction.atomic():
                 exam = Exam.objects.create(
                     course_class=validated_data['course_class'],
