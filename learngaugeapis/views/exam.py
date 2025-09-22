@@ -319,16 +319,16 @@ class ExamView(ViewSet):
             _course_code = row['question_code'][:-8].lower()
 
             if _course_code != course_code.lower():
-                invalid_question_codes.add(row['question_code'][:-8].lower())
+                invalid_question_codes.add(row['question_code'])
 
-            course_codes.add(row['question_code'][:-8].lower())
+            course_codes.add(_course_code)
 
             data["questions"][row['question_code']] = {
                 "correct_answer": row['correct_answer'],
                 "difficulty": row['question_code'][-1].lower(),
                 "no": row['question_code'][-4:-1].lower(),
                 "version": row['question_code'][-8:-4].lower(),
-                "course_code": row['question_code'][:-8].lower(),
+                "course_code": _course_code,
             }
             
             if row['question_code'][-8:-4].lower() not in data["exams"]:
