@@ -317,27 +317,27 @@ class ExamView(ViewSet):
                 duplicate_question_codes.add(row['question_code'])
                 continue
 
-            _course_code = row['question_code'][:-6].lower()
+            _course_code = row['question_code'][:-8].lower()
 
             if _course_code != course_code.lower():
-                invalid_question_codes.add(row['question_code'][:-6].lower())
+                invalid_question_codes.add(row['question_code'][:-8].lower())
 
-            course_codes.add(row['question_code'][:-6].lower())
+            course_codes.add(row['question_code'][:-8].lower())
 
             data["questions"][row['question_code']] = {
                 "correct_answer": row['correct_answer'],
                 "difficulty": row['question_code'][-1].lower(),
                 "no": row['question_code'][-4:-1].lower(),
-                "version": row['question_code'][-7:-4].lower(),
-                "course_code": row['question_code'][:-6].lower(),
+                "version": row['question_code'][-8:-4].lower(),
+                "course_code": row['question_code'][:-8].lower(),
             }
             
-            if row['question_code'][-7:-4].lower() not in data["exams"]:
-                data["exams"][row['question_code'][-7:-4].lower()] = {
+            if row['question_code'][-8:-4].lower() not in data["exams"]:
+                data["exams"][row['question_code'][-8:-4].lower()] = {
                     "number_of_questions": 1,
                 }
             else:
-                data["exams"][row['question_code'][-7:-4].lower()]["number_of_questions"] += 1
+                data["exams"][row['question_code'][-8:-4].lower()]["number_of_questions"] += 1
 
         all_exams_have_same_number_of_questions = all(data["exams"][exam]["number_of_questions"] == data["exams"][list(data["exams"].keys())[0]]["number_of_questions"] for exam in data["exams"])
 
@@ -371,12 +371,12 @@ class ExamView(ViewSet):
                 duplicate_question_codes.add(row['question_code'])
                 continue
 
-            _course_code = row['question_code'][:-6].lower()
+            _course_code = row['question_code'][:-8].lower()
 
             if _course_code != course_code.lower():
-                invalid_question_codes.add(row['question_code'][:-6].lower())
+                invalid_question_codes.add(row['question_code'][:-8].lower())
 
-            course_codes.add(row['question_code'][:-6].lower())
+            course_codes.add(row['question_code'][:-8].lower())
             data[row['question_code']] = row['chapter']
 
         if duplicate_question_codes:
@@ -421,13 +421,13 @@ class ExamView(ViewSet):
             data[student_id]["number_of_questions"] = len(answers)
 
             for question_code, answer in answers.items():
-                _course_code = question_code[:-6].lower()
+                _course_code = question_code[:-8].lower()
 
                 if _course_code != course_code.lower():
-                    invalid_question_codes.add(question_code[:-6].lower())
+                    invalid_question_codes.add(question_code[:-8].lower())
 
-                course_codes.add(question_code[:-6].lower())
-                version.add(question_code[-7:-4].lower())
+                course_codes.add(question_code[:-8].lower())
+                version.add(question_code[-8:-4].lower())
 
             if len(version) > 1:
                 raise InvalidFileContentException(f"File đáp án của sinh viên {student_id} có các câu không thuộc cùng 1 mã đề thi: {', '.join(version)}")
