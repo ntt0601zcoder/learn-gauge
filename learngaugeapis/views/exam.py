@@ -22,13 +22,13 @@ from learngaugeapis.serializers.exam_results import UploadExamResultSerializer
 from learngaugeapis.errors.exceptions import InvalidFileContentException
 
 class ExamView(ViewSet):
-    authentication_classes = [UserAuthentication]
+    # authentication_classes = [UserAuthentication]
     paginator = CustomPageNumberPagination()
 
-    def get_permissions(self):
-        if self.action in ['create', 'update', 'destroy']:
-            return [IsRoot()]
-        return []
+    # def get_permissions(self):
+    #     if self.action in ['create', 'update', 'destroy']:
+    #         return [IsRoot()]
+    #     return []
     
     @swagger_auto_schema(
         responses={200: ExamSerializer(many=True)},
@@ -359,34 +359,34 @@ class ExamView(ViewSet):
         df = pd.read_excel(file)
         df = df.map(lambda x: x.lower() if isinstance(x, str) else x)
         df.columns = df.columns.map(str.lower)
-        df = df.rename(columns={'mã đề': 'question_code', 'chương': 'chapter'})
+        df = df.rename(columns={'mã đề': 'exam_version_code', 'chương': 'chapter'})
 
         data = {}
-        duplicate_question_codes = set()
+        duplicate_exam_version_codes = set()
         course_codes = set()
-        invalid_question_codes = set()
+        invalid_exam_version_codes = set()
 
         for _, row in df.iterrows():
-            if row['question_code'] in data:
-                duplicate_question_codes.add(row['question_code'])
+            if row['exam_version_code'] in data:
+                duplicate_exam_version_codes.add(row['exam_version_code'])
                 continue
 
-            _course_code = row['question_code'][:-8].lower()
+            _course_code = row['exam_version_code'][:-8].lower()
 
             if _course_code != course_code.lower():
-                invalid_question_codes.add(row['question_code'][:-8].lower())
+                invalid_exam_version_codes.add(row['exam_version_code'][:-4].lower())
 
-            course_codes.add(row['question_code'][:-8].lower())
-            data[row['question_code']] = row['chapter']
+            course_codes.add(row['exam_version_code'][:-4].lower())
+            data[row['exam_version_code']] = row['chapter']
 
-        if duplicate_question_codes:
-            raise InvalidFileContentException(f"File câu hỏi - chương có {len(duplicate_question_codes)} mã câu hỏi bị trùng lặp: {', '.join(duplicate_question_codes)}")
+        if duplicate_exam_version_codes:
+            raise InvalidFileContentException(f"File câu hỏi - chương có {len(duplicate_exam_version_codes)} mã đề hỏi bị trùng lặp: {', '.join(duplicate_exam_version_codes)}")
 
-        if invalid_question_codes:
-            raise InvalidFileContentException(f"File câu hỏi - chương có các câu không thuộc môn học {course_code}: {', '.join(invalid_question_codes)}")
+        if invalid_exam_version_codes:
+            raise InvalidFileContentException(f"File câu hỏi - chương có các mã đề không thuộc môn học {course_code}: {', '.join(invalid_exam_version_codes)}")
         
         if len(course_codes) > 1:
-            raise InvalidFileContentException(f"File câu hỏi - chương có các câu không thuộc cùng 1 môn học: {', '.join(course_codes)}")
+            raise InvalidFileContentException(f"File câu hỏi - chương có các mã đề không thuộc cùng 1 môn học: {', '.join(course_codes)}")
 
         return data
 
