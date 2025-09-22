@@ -216,7 +216,6 @@ class ExamView(ViewSet):
                 exam_results = []
 
                 for student_code, student_data in student_answer_data.items():
-                    print(student_data)
                     exam_results.append(
                         ExamResult(
                             student_code=student_code,
@@ -371,7 +370,7 @@ class ExamView(ViewSet):
                 duplicate_exam_version_codes.add(row['exam_version_code'])
                 continue
 
-            _course_code = row['exam_version_code'][:-8].lower()
+            _course_code = row['exam_version_code'][:-4].lower()
 
             if _course_code != course_code.lower():
                 invalid_exam_version_codes.add(row['exam_version_code'][:-4].lower())
