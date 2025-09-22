@@ -373,9 +373,9 @@ class ExamView(ViewSet):
             _course_code = row['exam_version_code'][:-4].lower()
 
             if _course_code != course_code.lower():
-                invalid_exam_version_codes.add(row['exam_version_code'][:-4].lower())
+                invalid_exam_version_codes.add(_course_code)
 
-            course_codes.add(row['exam_version_code'][:-4].lower())
+            course_codes.add(_course_code)
             data[row['exam_version_code']] = row['chapter']
 
         if duplicate_exam_version_codes:
