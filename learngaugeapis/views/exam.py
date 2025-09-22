@@ -428,8 +428,8 @@ class ExamView(ViewSet):
                 course_codes.add(question_code[:-8].lower())
                 version.add(question_code[-8:-4].lower())
 
-            if len(version) > 1:
-                raise InvalidFileContentException(f"File đáp án của sinh viên {student_id} có các câu không thuộc cùng 1 mã đề thi: {', '.join(version)}")
+            # if len(version) > 1:
+            #     raise InvalidFileContentException(f"File đáp án của sinh viên {student_id} có các câu không thuộc cùng 1 mã đề thi: {', '.join(version)}")
 
         if student_ids:
             raise InvalidFileContentException(f"Có {len(student_ids)} mã sinh viên bị trùng lặp: {student_ids.join(', ')}")
