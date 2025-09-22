@@ -202,7 +202,7 @@ class ExamView(ViewSet):
 
             self.__validate_exam_result_data(course.code, answer_data, classification_data, student_answer_data)
             self.__consolidate_exam_result_data(course.code, answer_data, classification_data, student_answer_data)
-
+            return RestResponse(status=status.HTTP_200_OK).response
             with transaction.atomic():
                 exam = Exam.objects.create(
                     course_class=validated_data['course_class'],
@@ -274,8 +274,8 @@ class ExamView(ViewSet):
                         student_data["number_of_correct_hard_questions"] += 1
 
     def __validate_exam_result_data(self, course_code, answer_data, classification_data, student_answer_data):
-        if len(answer_data["questions"]) != len(classification_data):
-            raise InvalidFileContentException("Số lượng câu hỏi trong file đáp án và file câu hỏi - chương không khớp!")
+        # if len(answer_data["questions"]) != len(classification_data):
+        #     raise InvalidFileContentException("Số lượng câu hỏi trong file đáp án và file câu hỏi - chương không khớp!")
 
         unique_student_question_codes = set()
 
