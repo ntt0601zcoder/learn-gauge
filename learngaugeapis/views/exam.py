@@ -423,9 +423,9 @@ class ExamView(ViewSet):
                 _course_code = question_code[:-8].lower()
 
                 if _course_code != course_code.lower():
-                    invalid_question_codes.add(question_code[:-8].lower())
+                    invalid_question_codes.add(question_code)
 
-                course_codes.add(question_code[:-8].lower())
+                course_codes.add(_course_code)
                 version.add(question_code[-8:-4].lower())
 
             # if len(version) > 1:
