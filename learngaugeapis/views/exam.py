@@ -211,6 +211,9 @@ class ExamView(ViewSet):
                     clo_type=validated_data["clo_type"],
                     exam_format=validated_data["exam_format"],
                     chapters=validated_data["chapters"],
+                    pass_expectation_rate=validated_data["pass_expectation_rate"],
+                    clo_pass_threshold=validated_data["clo_pass_threshold"],
+                    max_score=validated_data["max_score"],
                 )
 
                 exam_results = []
