@@ -187,7 +187,7 @@ class ExamView(ViewSet):
 
             validated_data = serializer.validated_data
 
-            course  = Course.objects.get(classes=validated_data['course_class'])
+            course: Course  = Course.objects.get(classes=validated_data['course_class'])
 
             if not course.clo_types.filter(is_evaluation=True, deleted_at=None).exists():
                 return RestResponse(status=status.HTTP_400_BAD_REQUEST, message="Vui lòng cài đặt CLO đánh giá cho khóa học trước khi thực hiện thao tác này!").response
@@ -201,7 +201,7 @@ class ExamView(ViewSet):
             student_answer_data = self.__load_and_validate_student_answer_file(course.code, student_answer_file)
 
             self.__validate_exam_result_data(course.code, answer_data, classification_data, student_answer_data)
-            self.__consolidate_exam_result_data(course.code, answer_data, classification_data, student_answer_data)
+            self.__consolidate_exam_result_data(validated_data["chapters"], answer_data, classification_data, student_answer_data)
 
             with transaction.atomic():
                 exam = Exam.objects.create(
@@ -244,7 +244,7 @@ class ExamView(ViewSet):
             logging.getLogger().error("ExamView.upload_exam_results exc=%s", str(e))
             return RestResponse(status=status.HTTP_500_INTERNAL_SERVER_ERROR).response
 
-    def __consolidate_exam_result_data(self, course_code, answer_data, classification_data, student_answer_data):
+    def __consolidate_exam_result_data(self, chapters, answer_data, classification_data, student_answer_data):
         for _, student_data in student_answer_data.items():
             student_data["number_of_correct_easy_questions"] = 0
             student_data["number_of_correct_medium_questions"] = 0
@@ -253,8 +253,15 @@ class ExamView(ViewSet):
             student_data["number_of_easy_questions"] = 0
             student_data["number_of_medium_questions"] = 0
             student_data["number_of_hard_questions"] = 0
+            student_data["number_of_dropped_questions"] = 0
 
             for question_code, answer in student_data['answers'].items():
+                chapter_code = question_code[:-4]
+
+                if chapter_code not in classification_data or classification_data[chapter_code] not in chapters:
+                    student_data["number_of_dropped_questions"] += 1
+                    continue
+
                 is_correct = answer == answer_data["questions"][question_code]["correct_answer"]
                 
                 if is_correct:
@@ -275,6 +282,14 @@ class ExamView(ViewSet):
 
                     if is_correct:
                         student_data["number_of_correct_hard_questions"] += 1
+
+        number_of_dropped_questions_set = set()
+
+        for _, student_data in student_answer_data.items():
+            number_of_dropped_questions_set.add(student_data["number_of_dropped_questions"])
+
+        if len(number_of_dropped_questions_set) > 1:
+            raise InvalidFileContentException("Số lượng câu hỏi bị loại trừ của sinh viên không tương đồng!")
 
     def __validate_exam_result_data(self, course_code, answer_data, classification_data, student_answer_data):
         # if len(answer_data["questions"]) != len(classification_data):
