@@ -9,6 +9,7 @@ from rest_framework.parsers import MultiPartParser
 import pandas as pd
 import numpy as np
 from django.db import transaction
+from django.db.models import Count, Sum, Q
 
 from learngaugeapis.helpers.response import RestResponse
 from learngaugeapis.helpers.paginator import CustomPageNumberPagination
@@ -22,13 +23,13 @@ from learngaugeapis.serializers.exam_results import UploadExamResultSerializer
 from learngaugeapis.errors.exceptions import InvalidFileContentException
 
 class ExamView(ViewSet):
-    authentication_classes = [UserAuthentication]
+    # authentication_classes = [UserAuthentication]
     paginator = CustomPageNumberPagination()
 
-    def get_permissions(self):
-        if self.action in ['create', 'update', 'destroy']:
-            return [IsRoot()]
-        return []
+    # def get_permissions(self):
+    #     if self.action in ['create', 'update', 'destroy']:
+    #         return [IsRoot()]
+    #     return []
     
     @swagger_auto_schema(
         responses={200: ExamSerializer(many=True)},
@@ -102,12 +103,54 @@ class ExamView(ViewSet):
             if semester:
                 exams = exams.filter(course_class__semester=semester)
 
-            exams = self.paginator.paginate_queryset(exams, request)
             serializer = ExamSerializer(exams, many=True)
-            return RestResponse(status=status.HTTP_200_OK, data=self.paginator.get_paginated_data(serializer.data)).response
+            return RestResponse(
+                status=status.HTTP_200_OK, 
+                data={
+                    "exams": serializer.data,
+                    "full": self.__get_full_exam_data(serializer.data)
+                }
+            ).response
         except Exception as e:
             logging.getLogger().error("ExamView.list exc=%s", str(e))
             return RestResponse(status=status.HTTP_500_INTERNAL_SERVER_ERROR).response
+
+    def __get_full_exam_data(self, dataset):
+        total_students = sum(data["metadata"]["total_students"] for data in dataset)
+        total_passed = sum(data["metadata"]["total_passed"] for data in dataset)
+        total_A = sum(data["metadata"]["clo_classification"]["A"]["count"] for data in dataset)
+        total_B = sum(data["metadata"]["clo_classification"]["B"]["count"] for data in dataset)
+        total_C = sum(data["metadata"]["clo_classification"]["C"]["count"] for data in dataset)
+        total_D = sum(data["metadata"]["clo_classification"]["D"]["count"] for data in dataset)
+        total_F = sum(data["metadata"]["clo_classification"]["F"]["count"] for data in dataset)
+
+        data = {
+            "total_students": total_students,
+            "pass_rate": total_passed / total_students * 100,
+            "clo_classification": {
+                "A": {
+                    "count": total_A,
+                    "percentage": total_A / total_students * 100
+                },
+                "B": {
+                    "count": total_B,
+                    "percentage": total_B / total_students * 100
+                },
+                "C": {
+                    "count": total_C,
+                    "percentage": total_C / total_students * 100
+                },
+                "D": {
+                    "count": total_D,
+                    "percentage": total_D / total_students * 100
+                },
+                "F": {
+                    "count": total_F,
+                    "percentage": total_F / total_students * 100
+                }
+            }
+        }
+        return data
         
     def retrieve(self, request, pk=None):
         try:
@@ -120,47 +163,6 @@ class ExamView(ViewSet):
         except Exception as e:
             logging.getLogger().error("ExamView.retrieve exc=%s", str(e))
             return RestResponse(status=status.HTTP_500_INTERNAL_SERVER_ERROR).response
-        
-    # @swagger_auto_schema(request_body=CreateExamSerializer)
-    # def create(self, request):
-    #     try:
-    #         logging.getLogger().info("ExamView.create req=%s", request.data)
-    #         serializer = CreateExamSerializer(data=request.data)
-
-    #         if not serializer.is_valid():
-    #             return RestResponse(status=status.HTTP_400_BAD_REQUEST, data=serializer.errors).response
-            
-    #         exam = Exam.objects.create(**serializer.validated_data)
-    #         serializer = ExamSerializer(exam)
-    #         return RestResponse(status=status.HTTP_201_CREATED, data=serializer.data).response
-    #     except Exception as e:
-    #         logging.getLogger().error("ExamView.create exc=%s", str(e))
-    #         return RestResponse(status=status.HTTP_500_INTERNAL_SERVER_ERROR).response
-        
-    # @swagger_auto_schema(request_body=UpdateExamSerializer)
-    # def update(self, request, pk=None):
-    #     try:
-    #         logging.getLogger().info("ExamView.update pk=%s, req=%s", pk, request.data)
-    #         exam = Exam.objects.get(id=pk, deleted_at=None)
-    #         serializer = UpdateExamSerializer(exam, data=request.data)
-            
-    #         if not serializer.is_valid():
-    #             return RestResponse(status=status.HTTP_400_BAD_REQUEST, data=serializer.errors).response
-            
-    #         validated_data = serializer.validated_data
-
-    #         for key, value in validated_data.items():
-    #             setattr(exam, key, value)
-
-    #         exam.save()
-    #         serializer = ExamSerializer(exam)
-
-    #         return RestResponse(status=status.HTTP_200_OK, data=serializer.data).response
-    #     except Exam.DoesNotExist:
-    #         return RestResponse(status=status.HTTP_404_NOT_FOUND).response
-    #     except Exception as e:
-    #         logging.getLogger().error("ExamView.update exc=%s", str(e))
-    #         return RestResponse(status=status.HTTP_500_INTERNAL_SERVER_ERROR).response
         
     def destroy(self, request, pk=None):
         try:

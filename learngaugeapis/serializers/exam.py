@@ -22,6 +22,7 @@ class ExamSerializer(serializers.ModelSerializer):
 
     def get_metadata(self, obj: Exam):
         total_students = obj.exam_results.count()
+        total_passed = obj.exam_results.with_metrics().filter(is_passed=True).count()
 
         return {
             "course_class": ClassSerializer(obj.course_class).data,
@@ -30,7 +31,8 @@ class ExamSerializer(serializers.ModelSerializer):
             "clo_type": CLOTypeSerializer(obj.clo_type).data,
             "academic_program": AcademicProgramSerializer(obj.course_class.course.major.academic_program).data,
             "total_students": total_students,
-            "pass_rate": obj.exam_results.with_metrics().filter(is_passed=True).count() / total_students * 100,
+            "total_passed": total_passed,
+            "pass_rate": total_passed / total_students * 100,
             "clo_classification": {
                 "A": {
                     "count": obj.exam_results.with_metrics().filter(letter_grade="A").count(),
