@@ -22,13 +22,13 @@ from learngaugeapis.serializers.exam_results import UploadExamResultSerializer
 from learngaugeapis.errors.exceptions import InvalidFileContentException
 
 class ExamView(ViewSet):
-    # authentication_classes = [UserAuthentication]
+    authentication_classes = [UserAuthentication]
     paginator = CustomPageNumberPagination()
 
-    # def get_permissions(self):
-    #     if self.action in ['create', 'update', 'destroy']:
-    #         return [IsRoot()]
-    #     return []
+    def get_permissions(self):
+        if self.action in ['create', 'update', 'destroy']:
+            return [IsRoot()]
+        return []
     
     @swagger_auto_schema(
         responses={200: ExamSerializer(many=True)},
@@ -233,6 +233,9 @@ class ExamView(ViewSet):
                             total_correct_hard_questions=student_data["number_of_correct_hard_questions"],
                         )
                     )
+
+                if len(exam_results) == 0:
+                    raise InvalidFileContentException("Không có sinh viên nào tham gia thi!")
                 
                 ExamResult.objects.bulk_create(exam_results)
             return RestResponse(status=status.HTTP_200_OK, data=ExamSerializer(exam).data).response
