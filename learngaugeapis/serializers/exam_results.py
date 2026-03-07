@@ -2,7 +2,7 @@ from rest_framework import serializers
 import os
 
 from learngaugeapis.serializers.exam import CreateExamSerializer
-
+from learngaugeapis.const.exam_formats import ExamFormat
 
 def validate_file_extension(file):
     ext = os.path.splitext(file.name)[1].lower()
@@ -14,3 +14,6 @@ class UploadExamResultSerializer(CreateExamSerializer):
     answer_file = serializers.FileField(validators=[validate_file_extension])
     classification_file = serializers.FileField(validators=[validate_file_extension])
     student_answer_file = serializers.FileField(validators=[validate_file_extension])
+    
+class UploadEssayExamResultSerializer(CreateExamSerializer):
+    essay_exam_result_file = serializers.FileField(validators=[validate_file_extension])
