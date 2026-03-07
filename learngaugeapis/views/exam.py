@@ -9,8 +9,8 @@ from rest_framework.parsers import MultiPartParser
 import pandas as pd
 import numpy as np
 from django.db import transaction
-from django.db.models import Count, Sum, Q
-
+from learngaugeapis.const.exam_formats import ExamFormat
+from learngaugeapis.serializers.exam_results import UploadEssayExamResultSerializer
 from learngaugeapis.helpers.response import RestResponse
 from learngaugeapis.helpers.paginator import CustomPageNumberPagination
 from learngaugeapis.middlewares.authentication import UserAuthentication
@@ -21,6 +21,7 @@ from learngaugeapis.models.exam_result import ExamResult
 from learngaugeapis.serializers.exam import CreateExamSerializer, ExamSerializer, UpdateExamSerializer
 from learngaugeapis.serializers.exam_results import UploadExamResultSerializer
 from learngaugeapis.errors.exceptions import InvalidFileContentException
+from learngaugeapis.models.essay_exam_result import EssayExamResult
 
 class ExamView(ViewSet):
     # authentication_classes = [UserAuthentication]
@@ -211,7 +212,7 @@ class ExamView(ViewSet):
                     name=validated_data["name"],
                     description=validated_data["description"],
                     clo_type=validated_data["clo_type"],
-                    exam_format=validated_data["exam_format"],
+                    exam_format=ExamFormat.MCQ,
                     chapters=validated_data["chapters"],
                     pass_expectation_rate=validated_data["pass_expectation_rate"],
                     clo_pass_threshold=validated_data["clo_pass_threshold"],
@@ -318,7 +319,6 @@ class ExamView(ViewSet):
         if len(set(number_of_questions_per_student.values())) > 1:
             submsg = ", ".join([f"{student_id} có {number_of_questions_per_student[student_id]}" for student_id in number_of_questions_per_student.keys()])
             raise InvalidFileContentException(f"Số lượng câu hỏi trong file đáp án của sinh viên không tương đồng: {submsg}")
-
     
     def __load_and_validate_answer_file(self, course_code, file):
         df = pd.read_excel(file)
@@ -464,3 +464,124 @@ class ExamView(ViewSet):
             raise InvalidFileContentException(f"File đáp án của sinh viên có các câu không thuộc cùng 1 môn học: {', '.join(course_codes)}")
  
         return data
+
+    @swagger_auto_schema(request_body=UploadEssayExamResultSerializer)
+    @action(detail=False, methods=['post'], url_path='upload-essay-exam-results', parser_classes=[MultiPartParser])
+    def upload_essay_exam_results(self, request):
+        try:
+            logging.getLogger().info("ExamView.upload_essay_exam_results req=%s", request.data)
+            serializer = UploadEssayExamResultSerializer(data=request.data)
+
+            if not serializer.is_valid():
+                return RestResponse(status=status.HTTP_400_BAD_REQUEST, data=serializer.errors).response
+
+            validated_data = serializer.validated_data
+            
+            course: Course  = Course.objects.get(classes=validated_data['course_class'])
+
+            if not course.clo_types.filter(is_evaluation=True, deleted_at=None).exists():
+                return RestResponse(status=status.HTTP_400_BAD_REQUEST, message="Vui lòng cài đặt CLO đánh giá cho khóa học trước khi thực hiện thao tác này!").response
+
+            essay_exam_result_file = validated_data.pop('essay_exam_result_file')
+            essay_exam_result_data = self.__load_and_validate_essay_exam_result_file(
+                course.code, essay_exam_result_file, validated_data["chapters"]
+            )
+            
+            with transaction.atomic():
+                exam = Exam.objects.create(
+                    course_class=validated_data['course_class'],
+                    name=validated_data["name"],
+                    description=validated_data["description"],
+                    clo_type=validated_data["clo_type"],
+                    exam_format=ExamFormat.ESSAY,
+                    chapters=validated_data["chapters"],
+                    pass_expectation_rate=validated_data["pass_expectation_rate"],
+                    clo_pass_threshold=validated_data["clo_pass_threshold"],
+                    max_score=validated_data["max_score"],
+                )
+                essay_exam_results = []
+                
+                for student_code, student_data in essay_exam_result_data.items():
+                    essay_exam_results.append(
+                        EssayExamResult(
+                            student_code=student_code,
+                            exam=exam,
+                            average_score=student_data["average_score"],
+                        )
+                    )
+                    
+                if len(essay_exam_results) == 0:
+                    raise InvalidFileContentException("Không có sinh viên nào tham gia thi!")
+
+                EssayExamResult.objects.bulk_create(essay_exam_results)
+            return RestResponse(status=status.HTTP_200_OK, data=ExamSerializer(exam).data).response
+        except Course.DoesNotExist:
+            return RestResponse(status=status.HTTP_404_NOT_FOUND, data="Không tìm thấy học phần tương ứng!").response
+        except InvalidFileContentException as e:
+            return RestResponse(status=status.HTTP_400_BAD_REQUEST, message=str(e)).response
+        except Exception as e:
+            logging.getLogger().error("ExamView.upload_essay_exam_results exc=%s", str(e))
+            return RestResponse(status=status.HTTP_500_INTERNAL_SERVER_ERROR).response
+        
+    def __load_and_validate_essay_exam_result_file(self, course_code, file, chapters):
+        df = pd.read_excel(file)
+        df = df.map(lambda x: x.strip().lower() if isinstance(x, str) else x)
+        df.columns = df.columns.str.strip().str.lower()
+
+        # Chuẩn hóa tên cột: Sinh viên -> student_code
+        column_mapping = {'sinh viên': 'student_code'}
+        df = df.rename(columns=column_mapping)
+
+        if 'student_code' not in df.columns:
+            raise InvalidFileContentException("File phải có cột 'Sinh viên'!")
+
+        if not chapters:
+            raise InvalidFileContentException("Exam phải có ít nhất một chương được cấu hình!")
+
+        # Xác định các cột chương cần tính (chỉ các chương trong Exam.chapters)
+        chapter_columns = []
+        for ch in chapters:
+            col_name = f"chương {ch}"
+            if col_name not in df.columns:
+                raise InvalidFileContentException(f"File thiếu cột điểm cho chương {ch} ('{col_name}')!")
+            chapter_columns.append(col_name)
+
+        # Loại bỏ hàng có mã sinh viên rỗng/NaN trước khi kiểm tra trùng lặp
+        df = df[df['student_code'].notna() & (df['student_code'].astype(str).str.strip() != '') & (df['student_code'].astype(str).str.strip() != 'nan')]
+
+        # Loại bỏ hàng có mã sinh viên rỗng/NaN
+        df = df[df['student_code'].notna() & (df['student_code'].astype(str).str.strip() != '')]
+        df = df[df['student_code'].astype(str).str.strip() != 'nan']
+
+        # Kiểm tra mã sinh viên trùng lặp
+        duplicate_student_codes = df[df.duplicated(subset=['student_code'], keep=False)]['student_code'].unique().tolist()
+        if len(duplicate_student_codes) > 0:
+            raise InvalidFileContentException(
+                f"File có mã sinh viên trùng lặp: {', '.join(str(c) for c in duplicate_student_codes)}"
+            )
+
+        data = {}
+        for _, row in df.iterrows():
+            if pd.isna(row['student_code']):
+                continue
+            student_code = str(row['student_code']).strip()
+            if not student_code or student_code == 'nan':
+                continue
+
+            # Chỉ lấy điểm các chương được cấu hình trong Exam
+            chapter_scores = row[chapter_columns].apply(pd.to_numeric, errors='coerce')
+            valid_scores = chapter_scores.dropna()
+
+            if len(valid_scores) == 0:
+                raise InvalidFileContentException(
+                    f"Sinh viên {student_code} không có điểm hợp lệ cho các chương {chapters}!"
+                )
+
+            average_score = float(valid_scores.mean())
+
+            data[student_code] = {
+                "average_score": round(average_score, 2),
+            }
+
+        return data
+#   

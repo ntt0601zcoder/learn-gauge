@@ -10,7 +10,14 @@ gunicorn
 whitenoise
 firebase_admin
 logtail-python
-psycopg2
-pandas
-openpyxl
+pandas==3.0.0
+numpy==2.3.5
+scikit-learn==1.8.0
+matplotlib==3.9.4
+seaborn==0.13.2
+openpyxl==3.1.5
 uvicorn
+PyMySQL
+psycopg[binary]
+
+# /Users/thuan.nguyen.trong/Desktop/workspace/thuannt/modelAI/dist/ml_clo-0.1.0-py3-none-any.whl
