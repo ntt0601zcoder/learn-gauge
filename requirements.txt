@@ -20,4 +20,4 @@ uvicorn
 PyMySQL
 psycopg[binary]
 
-# /Users/thuan.nguyen.trong/Desktop/workspace/thuannt/modelAI/dist/ml_clo-0.1.0-py3-none-any.whl
+/Users/thuan.nguyen.trong/Desktop/workspace/thuannt/modelAI/dist/ml_clo-0.1.0-py3-none-any.whl
