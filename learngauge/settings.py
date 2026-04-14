@@ -22,7 +22,7 @@ BASE_DIR = Path(__file__).resolve().parent.parent
 # See https://docs.djangoproject.com/en/5.1/howto/deployment/checklist/
 
 # SECURITY WARNING: keep the secret key used in production secret!
-SECRET_KEY = 'django-insecure-an$a)cg==8-@lvxkxycv=5m(&zu0b0m$m(^v)959wcrnpyb12d'
+SECRET_KEY = config("SECRET_KEY")
 
 # SECURITY WARNING: don't run with debug turned on in production!
 DEBUG = True
@@ -237,3 +237,7 @@ AUTH_USER_MODEL = 'learngaugeapis.User'
 # Firebase Configuration
 FIREBASE_CERTIFICATE = config("FIREBASE_CERTIFICATE", "firebase_cert.json")
 FIREBASE_STORAGE_BUCKET_URL = config("FIREBASE_STORAGE_BUCKET_URL")
+
+# ML / AI Configuration
+ML_MODEL_PATH = config("ML_MODEL_PATH", default=None)
+ML_DATA_DIR = config("ML_DATA_DIR", default=str(BASE_DIR / "data"))
