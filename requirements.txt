@@ -20,4 +20,8 @@ uvicorn
 PyMySQL
 psycopg[binary]
 
-/Users/thuan.nguyen.trong/Desktop/workspace/thuannt/modelAI/dist/ml_clo-0.1.0-py3-none-any.whl
+# Cài từ GitHub (sau khi push repo lên):
+ml-clo @ git+https://github.com/ngocmai-26/modelAI.git@fix/v1
+
+# Cài local (hiện tại):
+# ml-clo @ file:///Users/thuan.nguyen.trong/Desktop/workspace/thuannt/modelAI
