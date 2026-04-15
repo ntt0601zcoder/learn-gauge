@@ -234,10 +234,6 @@ EMAIL_HOST_PASSWORD = config("EMAIL_HOST_PASSWORD")
 
 AUTH_USER_MODEL = 'learngaugeapis.User'
 
-# Firebase Configuration
-FIREBASE_CERTIFICATE = config("FIREBASE_CERTIFICATE", "firebase_cert.json")
-FIREBASE_STORAGE_BUCKET_URL = config("FIREBASE_STORAGE_BUCKET_URL")
-
 # ML / AI Configuration
 ML_MODEL_PATH = config("ML_MODEL_PATH", default=None)
 ML_DATA_DIR = config("ML_DATA_DIR", default=str(BASE_DIR / "data"))
