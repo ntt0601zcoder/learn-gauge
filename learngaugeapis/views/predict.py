@@ -258,17 +258,17 @@ def _run_training(model_path: str, data_dir: str):
     try:
         from ml_clo import TrainingPipeline  # noqa: PLC0415
 
-        pipeline = TrainingPipeline(
+        pipeline = TrainingPipeline()
+        result = pipeline.run(
             exam_scores_path=os.path.join(data_dir, "DiemTong.xlsx"),
+            output_path=model_path,
             conduct_scores_path=os.path.join(data_dir, "diemrenluyen.xlsx"),
             demographics_path=os.path.join(data_dir, "nhankhau.xlsx"),
             teaching_methods_path=os.path.join(data_dir, "PPGDfull.xlsx"),
             assessment_methods_path=os.path.join(data_dir, "PPDGfull.xlsx"),
-            attendance_path=os.path.join(data_dir, "Dữ liệu điểm danh Khoa FIRA.xlsx"),
             study_hours_path=os.path.join(data_dir, "tuhoc.xlsx"),
-            output_path=model_path,
+            attendance_path=os.path.join(data_dir, "Dữ liệu điểm danh Khoa FIRA.xlsx"),
         )
-        result = pipeline.run()
         logging.getLogger().info("PredictView._run_training completed result=%s", result)
 
         # Hot-reload prediction / analysis pipelines with the new model
