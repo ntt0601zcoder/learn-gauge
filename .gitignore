@@ -209,3 +209,7 @@ firebase_cert.json
 migrations/
 public/
 .render.env
+
+# ML model artifacts (too large for git)
+models/
+*.joblib
