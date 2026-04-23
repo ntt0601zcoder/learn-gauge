@@ -1,0 +1,25 @@
+services:
+  app:
+    build: .
+    container_name: learn-gauge-app
+    ports:
+      - "8000:8000"
+    env_file:
+      - .env
+    environment:
+      ML_MODEL_PATH: /app/models/model.joblib
+      ML_DATA_DIR: /app/data
+    volumes:
+      - ./data:/app/data
+      - ./models:/app/models
+    command:
+      - sh
+      - -c
+      - |
+        python manage.py migrate --noinput && \
+        exec gunicorn learngauge.wsgi:application \
+          --bind 0.0.0.0:8000 \
+          --workers 1 \
+          --timeout 300 \
+          --access-logfile - \
+          --error-logfile -

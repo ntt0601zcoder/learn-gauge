@@ -1,0 +1,34 @@
+venv/
+.venv/
+__pycache__/
+**/__pycache__/
+*.pyc
+*.pyo
+*.pyd
+
+.git/
+.gitignore
+.github/
+
+.DS_Store
+.idea/
+.vscode/
+
+*.md
+!README.md
+
+tests/
+pytest.ini
+.pytest_cache/
+
+# Artifacts — use volume mounts instead
+data/
+models/
+pkgs/
+dist/
+build/
+*.egg-info/
+
+# Secrets — load via env_file at runtime
+.env
+firebase_cert.json
