@@ -1,7 +1,6 @@
 import logging
 import os
 import threading
-from collections import defaultdict
 
 from decouple import config
 from drf_yasg import openapi
@@ -11,14 +10,15 @@ from rest_framework.decorators import action
 from rest_framework.viewsets import ViewSet
 
 from learngaugeapis.helpers.response import RestResponse
-from learngaugeapis.middlewares.permissions import IsRoot
 from learngaugeapis.ml_pipeline import (
     get_analysis_pipeline,
     get_predict_pipeline,
     reload_pipelines,
 )
-from learngaugeapis.models.course_class import Class
-from learngaugeapis.models.exam_result import ExamResult
+from learngaugeapis.serializers.predict import (
+    AnalyzeClassSerializer,
+    PredictStudentSerializer,
+)
 
 # ---------------------------------------------------------------------------
 # Graceful import of ml_clo exceptions so the module loads even when the
@@ -45,29 +45,33 @@ class PredictView(ViewSet):
     # ------------------------------------------------------------------
 
     @swagger_auto_schema(
-        operation_description="Dự đoán điểm CLO cho một sinh viên theo môn học",
-        manual_parameters=[
-            openapi.Parameter("subject_code", openapi.IN_PATH, type=openapi.TYPE_STRING),
-            openapi.Parameter("student_code", openapi.IN_PATH, type=openapi.TYPE_STRING),
-        ],
+        operation_description="Dự đoán điểm CLO cho một sinh viên theo môn học và giảng viên",
+        request_body=PredictStudentSerializer,
         responses={
             200: openapi.Response("Kết quả dự đoán"),
             400: openapi.Response("Dữ liệu không hợp lệ"),
-            404: openapi.Response("Không tìm thấy dữ liệu"),
             503: openapi.Response("Mô hình chưa sẵn sàng"),
         },
     )
-    @action(
-        detail=False,
-        methods=["get"],
-        url_path=r"subject/(?P<subject_code>[a-zA-Z0-9]+)/student/(?P<student_code>\d+)",
-    )
-    def predict_student(self, request, subject_code, student_code):
+    @action(detail=False, methods=["post"], url_path="student")
+    def predict_student(self, request):
         try:
+            serializer = PredictStudentSerializer(data=request.data)
+            if not serializer.is_valid():
+                return RestResponse(
+                    status=status.HTTP_400_BAD_REQUEST, data=serializer.errors
+                ).response
+
+            data = serializer.validated_data
+            student_id = data["student_id"]
+            subject_id = data["subject_id"]
+            lecturer_id = data["lecturer_id"]
+
             logging.getLogger().info(
-                "PredictView.predict_student subject_code=%s student_code=%s",
-                subject_code,
-                student_code,
+                "PredictView.predict_student student_id=%s subject_id=%s lecturer_id=%s",
+                student_id,
+                subject_id,
+                lecturer_id,
             )
 
             pipeline = get_predict_pipeline()
@@ -76,51 +80,34 @@ class PredictView(ViewSet):
                     status=status.HTTP_503_SERVICE_UNAVAILABLE, message=_503_MESSAGE
                 ).response
 
-            results = ExamResult.objects.filter(
-                student_code=student_code,
-                exam__course_class__course__code=subject_code,
-            )
-            if not results.exists():
-                logging.getLogger().warning(
-                    "PredictView.predict_student no results for student_code=%s subject_code=%s",
-                    student_code,
-                    subject_code,
-                )
-                return RestResponse(status=status.HTTP_404_NOT_FOUND).response
-
-            lecturer_id = str(results.first().exam.course_class.teacher.card_id)
-
             output = pipeline.predict(
-                student_id=student_code,
-                subject_id=subject_code,
+                student_id=student_id,
+                subject_id=subject_id,
                 lecturer_id=lecturer_id,
             )
             return RestResponse(data=output.to_dict(), status=status.HTTP_200_OK).response
 
         except DataValidationError as e:
             logging.getLogger().warning(
-                "PredictView.predict_student validation exc=%s subject=%s student=%s",
+                "PredictView.predict_student validation exc=%s data=%s",
                 str(e),
-                subject_code,
-                student_code,
+                request.data,
             )
             return RestResponse(
                 status=status.HTTP_400_BAD_REQUEST, message="Không đủ dữ liệu để dự đoán!"
             ).response
         except (ModelLoadError, PredictionError) as e:
             logging.getLogger().error(
-                "PredictView.predict_student pipeline exc=%s subject=%s student=%s",
+                "PredictView.predict_student pipeline exc=%s data=%s",
                 str(e),
-                subject_code,
-                student_code,
+                request.data,
             )
             return RestResponse(status=status.HTTP_500_INTERNAL_SERVER_ERROR).response
         except Exception as e:
             logging.getLogger().exception(
-                "PredictView.predict_student exc=%s subject=%s student=%s",
+                "PredictView.predict_student exc=%s data=%s",
                 str(e),
-                subject_code,
-                student_code,
+                request.data,
             )
             return RestResponse(status=status.HTTP_500_INTERNAL_SERVER_ERROR).response
 
@@ -129,28 +116,33 @@ class PredictView(ViewSet):
     # ------------------------------------------------------------------
 
     @swagger_auto_schema(
-        operation_description="Phân tích kết quả học tập toàn lớp theo môn học",
-        manual_parameters=[
-            openapi.Parameter("subject_code", openapi.IN_PATH, type=openapi.TYPE_STRING),
-            openapi.Parameter("class_id", openapi.IN_PATH, type=openapi.TYPE_INTEGER),
-        ],
+        operation_description="Phân tích kết quả học tập toàn lớp theo môn học và giảng viên",
+        request_body=AnalyzeClassSerializer,
         responses={
             200: openapi.Response("Kết quả phân tích lớp"),
-            404: openapi.Response("Không tìm thấy lớp"),
+            400: openapi.Response("Dữ liệu không hợp lệ"),
             503: openapi.Response("Mô hình chưa sẵn sàng"),
         },
     )
-    @action(
-        detail=False,
-        methods=["get"],
-        url_path=r"subject/(?P<subject_code>[a-zA-Z0-9]+)/class/(?P<class_id>\d+)/analyze",
-    )
-    def analyze_class(self, request, subject_code, class_id):
+    @action(detail=False, methods=["post"], url_path="class")
+    def analyze_class(self, request):
         try:
+            serializer = AnalyzeClassSerializer(data=request.data)
+            if not serializer.is_valid():
+                return RestResponse(
+                    status=status.HTTP_400_BAD_REQUEST, data=serializer.errors
+                ).response
+
+            data = serializer.validated_data
+            subject_id = data["subject_id"]
+            lecturer_id = data["lecturer_id"]
+            clo_scores = data["clo_scores"]
+
             logging.getLogger().info(
-                "PredictView.analyze_class subject_code=%s class_id=%s",
-                subject_code,
-                class_id,
+                "PredictView.analyze_class subject_id=%s lecturer_id=%s n_scores=%s",
+                subject_id,
+                lecturer_id,
+                len(clo_scores),
             )
 
             pipeline = get_analysis_pipeline()
@@ -159,51 +151,27 @@ class PredictView(ViewSet):
                     status=status.HTTP_503_SERVICE_UNAVAILABLE, message=_503_MESSAGE
                 ).response
 
-            try:
-                course_class = Class.objects.select_related("teacher", "course").get(
-                    id=class_id, course__code=subject_code, deleted_at=None
-                )
-            except Class.DoesNotExist:
-                logging.getLogger().warning(
-                    "PredictView.analyze_class class_id=%s subject_code=%s",
-                    class_id,
-                    subject_code,
-                )
-                return RestResponse(status=status.HTTP_404_NOT_FOUND).response
-
-            results = (
-                ExamResult.objects.filter(exam__course_class_id=class_id)
-                .with_metrics()
-            )
-            if not results.exists():
-                logging.getLogger().warning(
-                    "PredictView.analyze_class no results for class_id=%s subject_code=%s",
-                    class_id,
-                    subject_code,
-                )
-                return RestResponse(status=status.HTTP_404_NOT_FOUND).response
-
-            # Aggregate per-student CLO score (sum contributions across exams)
-            student_totals = defaultdict(float)
-            for r in results:
-                student_totals[r.student_code] += r.actual_score
-
-            clo_scores = dict(student_totals)
-            lecturer_id = str(course_class.teacher.card_id)
-
             output = pipeline.analyze_class_from_scores(
-                subject_id=subject_code,
+                subject_id=subject_id,
                 lecturer_id=lecturer_id,
                 clo_scores=clo_scores,
             )
             return RestResponse(data=output.to_dict(), status=status.HTTP_200_OK).response
 
+        except DataValidationError as e:
+            logging.getLogger().warning(
+                "PredictView.analyze_class validation exc=%s data=%s",
+                str(e),
+                request.data,
+            )
+            return RestResponse(
+                status=status.HTTP_400_BAD_REQUEST, message="Không đủ dữ liệu để phân tích!"
+            ).response
         except Exception as e:
             logging.getLogger().exception(
-                "PredictView.analyze_class exc=%s subject=%s class=%s",
+                "PredictView.analyze_class exc=%s data=%s",
                 str(e),
-                subject_code,
-                class_id,
+                request.data,
             )
             return RestResponse(status=status.HTTP_500_INTERNAL_SERVER_ERROR).response
 
