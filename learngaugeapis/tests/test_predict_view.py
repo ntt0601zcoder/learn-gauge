@@ -40,24 +40,6 @@ def _make_analyze_output():
     return out
 
 
-def _mock_exam_qs(exists=True, card_id="90316"):
-    """Return a mock QuerySet for ExamResult."""
-    qs = MagicMock()
-    qs.exists.return_value = exists
-    first = MagicMock()
-    first.exam.course_class.teacher.card_id = card_id
-    qs.first.return_value = first
-    return qs
-
-
-def _mock_exam_qs_with_metrics(rows):
-    """Return an iterable mock QuerySet with annotated actual_score rows."""
-    qs = MagicMock()
-    qs.exists.return_value = bool(rows)
-    qs.__iter__ = MagicMock(return_value=iter(rows))
-    return qs
-
-
 # ---------------------------------------------------------------------------
 # predict_student
 # ---------------------------------------------------------------------------
@@ -65,19 +47,23 @@ def _mock_exam_qs_with_metrics(rows):
 class PredictStudentTests(TestCase):
     def setUp(self):
         self.factory = APIRequestFactory()
-        self.view = PredictView.as_view({"get": "predict_student"})
+        self.view = PredictView.as_view({"post": "predict_student"})
 
-    def _get(self, subject_code="INF0823", student_code="19050006"):
-        request = self.factory.get(f"/predict/subject/{subject_code}/student/{student_code}")
-        return self.view(request, subject_code=subject_code, student_code=student_code)
+    def _post(self, body=None):
+        if body is None:
+            body = {
+                "student_id": "19050006",
+                "subject_id": "INF0823",
+                "lecturer_id": "90316",
+            }
+        request = self.factory.post("/predict/student", body, format="json")
+        return self.view(request)
 
-    @patch("learngaugeapis.views.predict.ExamResult")
     @patch("learngaugeapis.views.predict.get_predict_pipeline")
-    def test_predict_student_success(self, mock_get_pipeline, mock_exam_result):
+    def test_predict_student_success(self, mock_get_pipeline):
         mock_get_pipeline.return_value = MagicMock(predict=MagicMock(return_value=_make_predict_output()))
-        mock_exam_result.objects.filter.return_value = _mock_exam_qs()
 
-        response = self._get()
+        response = self._post()
 
         self.assertEqual(response.status_code, status.HTTP_200_OK)
         self.assertIn("predicted_clo_score", response.data["data"])
@@ -87,59 +73,48 @@ class PredictStudentTests(TestCase):
             lecturer_id="90316",
         )
 
+    def test_predict_student_invalid_body_returns_400(self):
+        response = self._post(body={"student_id": "19050006"})  # missing fields
+
+        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
+
     @patch("learngaugeapis.views.predict.get_predict_pipeline")
     def test_predict_student_pipeline_not_initialized(self, mock_get_pipeline):
         mock_get_pipeline.return_value = None
 
-        response = self._get()
+        response = self._post()
 
         self.assertEqual(response.status_code, status.HTTP_503_SERVICE_UNAVAILABLE)
 
-    @patch("learngaugeapis.views.predict.ExamResult")
     @patch("learngaugeapis.views.predict.get_predict_pipeline")
-    def test_predict_student_not_found(self, mock_get_pipeline, mock_exam_result):
-        mock_get_pipeline.return_value = MagicMock()
-        mock_exam_result.objects.filter.return_value = _mock_exam_qs(exists=False)
-
-        response = self._get()
-
-        self.assertEqual(response.status_code, status.HTTP_404_NOT_FOUND)
-
-    @patch("learngaugeapis.views.predict.ExamResult")
-    @patch("learngaugeapis.views.predict.get_predict_pipeline")
-    def test_predict_student_data_validation_error(self, mock_get_pipeline, mock_exam_result):
+    def test_predict_student_data_validation_error(self, mock_get_pipeline):
         from learngaugeapis.views.predict import DataValidationError
 
         pipeline = MagicMock()
         pipeline.predict.side_effect = DataValidationError("missing data")
         mock_get_pipeline.return_value = pipeline
-        mock_exam_result.objects.filter.return_value = _mock_exam_qs()
 
-        response = self._get()
+        response = self._post()
 
         self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
 
-    @patch("learngaugeapis.views.predict.ExamResult")
     @patch("learngaugeapis.views.predict.get_predict_pipeline")
-    def test_predict_student_prediction_error(self, mock_get_pipeline, mock_exam_result):
+    def test_predict_student_prediction_error(self, mock_get_pipeline):
         from learngaugeapis.views.predict import PredictionError
 
         pipeline = MagicMock()
         pipeline.predict.side_effect = PredictionError("shap error")
         mock_get_pipeline.return_value = pipeline
-        mock_exam_result.objects.filter.return_value = _mock_exam_qs()
 
-        response = self._get()
+        response = self._post()
 
         self.assertEqual(response.status_code, status.HTTP_500_INTERNAL_SERVER_ERROR)
 
-    @patch("learngaugeapis.views.predict.ExamResult")
     @patch("learngaugeapis.views.predict.get_predict_pipeline")
-    def test_predict_student_unexpected_error(self, mock_get_pipeline, mock_exam_result):
+    def test_predict_student_unexpected_error(self, mock_get_pipeline):
         mock_get_pipeline.return_value = MagicMock(predict=MagicMock(side_effect=RuntimeError("boom")))
-        mock_exam_result.objects.filter.return_value = _mock_exam_qs()
 
-        response = self._get()
+        response = self._post()
 
         self.assertEqual(response.status_code, status.HTTP_500_INTERNAL_SERVER_ERROR)
 
@@ -151,39 +126,24 @@ class PredictStudentTests(TestCase):
 class AnalyzeClassTests(TestCase):
     def setUp(self):
         self.factory = APIRequestFactory()
-        self.view = PredictView.as_view({"get": "analyze_class"})
+        self.view = PredictView.as_view({"post": "analyze_class"})
 
-    def _get(self, subject_code="INF0823", class_id="1"):
-        request = self.factory.get(f"/predict/subject/{subject_code}/class/{class_id}/analyze")
-        return self.view(request, subject_code=subject_code, class_id=class_id)
+    def _post(self, body=None):
+        if body is None:
+            body = {
+                "subject_id": "INF0823",
+                "lecturer_id": "90316",
+                "clo_scores": {"19050001": 4.2, "19050002": 3.8},
+            }
+        request = self.factory.post("/predict/class", body, format="json")
+        return self.view(request)
 
-    def _mock_class(self, card_id="90316"):
-        course_class = MagicMock()
-        course_class.teacher.card_id = card_id
-        return course_class
-
-    def _make_result_row(self, student_code, actual_score):
-        row = MagicMock()
-        row.student_code = student_code
-        row.actual_score = actual_score
-        return row
-
-    @patch("learngaugeapis.views.predict.ExamResult")
-    @patch("learngaugeapis.views.predict.Class")
     @patch("learngaugeapis.views.predict.get_analysis_pipeline")
-    def test_analyze_class_success(self, mock_get_pipeline, mock_class, mock_exam_result):
+    def test_analyze_class_success_with_dict(self, mock_get_pipeline):
         pipeline = MagicMock(analyze_class_from_scores=MagicMock(return_value=_make_analyze_output()))
         mock_get_pipeline.return_value = pipeline
-        mock_class.objects.select_related.return_value.get.return_value = self._mock_class()
 
-        rows = [
-            self._make_result_row("19050001", 4.2),
-            self._make_result_row("19050002", 3.8),
-        ]
-        qs_with_metrics = _mock_exam_qs_with_metrics(rows)
-        mock_exam_result.objects.filter.return_value.with_metrics.return_value = qs_with_metrics
-
-        response = self._get()
+        response = self._post()
 
         self.assertEqual(response.status_code, status.HTTP_200_OK)
         self.assertIn("total_students", response.data["data"])
@@ -194,60 +154,72 @@ class AnalyzeClassTests(TestCase):
         )
 
     @patch("learngaugeapis.views.predict.get_analysis_pipeline")
+    def test_analyze_class_success_with_list(self, mock_get_pipeline):
+        pipeline = MagicMock(analyze_class_from_scores=MagicMock(return_value=_make_analyze_output()))
+        mock_get_pipeline.return_value = pipeline
+
+        response = self._post(body={
+            "subject_id": "INF0823",
+            "lecturer_id": "90316",
+            "clo_scores": [4.2, 3.8, 5.1],
+        })
+
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        _, kwargs = pipeline.analyze_class_from_scores.call_args
+        self.assertEqual(kwargs["clo_scores"], [4.2, 3.8, 5.1])
+
+    def test_analyze_class_invalid_body_returns_400(self):
+        response = self._post(body={"subject_id": "INF0823"})  # missing fields
+
+        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
+
+    def test_analyze_class_empty_clo_scores_returns_400(self):
+        response = self._post(body={
+            "subject_id": "INF0823",
+            "lecturer_id": "90316",
+            "clo_scores": {},
+        })
+
+        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
+
+    def test_analyze_class_invalid_clo_scores_type_returns_400(self):
+        response = self._post(body={
+            "subject_id": "INF0823",
+            "lecturer_id": "90316",
+            "clo_scores": "not a dict or list",
+        })
+
+        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
+
+    @patch("learngaugeapis.views.predict.get_analysis_pipeline")
     def test_analyze_class_pipeline_not_initialized(self, mock_get_pipeline):
         mock_get_pipeline.return_value = None
 
-        response = self._get()
+        response = self._post()
 
         self.assertEqual(response.status_code, status.HTTP_503_SERVICE_UNAVAILABLE)
 
-    @patch("learngaugeapis.views.predict.Class")
     @patch("learngaugeapis.views.predict.get_analysis_pipeline")
-    def test_analyze_class_class_not_found(self, mock_get_pipeline, mock_class):
-        mock_get_pipeline.return_value = MagicMock()
-        mock_class.objects.select_related.return_value.get.side_effect = mock_class.DoesNotExist
+    def test_analyze_class_data_validation_error(self, mock_get_pipeline):
+        from learngaugeapis.views.predict import DataValidationError
 
-        response = self._get()
-
-        self.assertEqual(response.status_code, status.HTTP_404_NOT_FOUND)
-
-    @patch("learngaugeapis.views.predict.ExamResult")
-    @patch("learngaugeapis.views.predict.Class")
-    @patch("learngaugeapis.views.predict.get_analysis_pipeline")
-    def test_analyze_class_no_exam_results(self, mock_get_pipeline, mock_class, mock_exam_result):
-        mock_get_pipeline.return_value = MagicMock()
-        mock_class.objects.select_related.return_value.get.return_value = self._mock_class()
-        mock_exam_result.objects.filter.return_value.with_metrics.return_value = (
-            _mock_exam_qs_with_metrics([])
-        )
-
-        response = self._get()
-
-        self.assertEqual(response.status_code, status.HTTP_404_NOT_FOUND)
-
-    @patch("learngaugeapis.views.predict.ExamResult")
-    @patch("learngaugeapis.views.predict.Class")
-    @patch("learngaugeapis.views.predict.get_analysis_pipeline")
-    def test_analyze_class_aggregates_multiple_exams_per_student(
-        self, mock_get_pipeline, mock_class, mock_exam_result
-    ):
-        """A student with two exams should have their scores summed."""
-        pipeline = MagicMock(analyze_class_from_scores=MagicMock(return_value=_make_analyze_output()))
+        pipeline = MagicMock()
+        pipeline.analyze_class_from_scores.side_effect = DataValidationError("missing")
         mock_get_pipeline.return_value = pipeline
-        mock_class.objects.select_related.return_value.get.return_value = self._mock_class()
 
-        rows = [
-            self._make_result_row("19050001", 2.0),
-            self._make_result_row("19050001", 1.5),  # second exam, same student
-        ]
-        mock_exam_result.objects.filter.return_value.with_metrics.return_value = (
-            _mock_exam_qs_with_metrics(rows)
-        )
+        response = self._post()
 
-        self._get()
+        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
 
-        _, kwargs = pipeline.analyze_class_from_scores.call_args
-        self.assertAlmostEqual(kwargs["clo_scores"]["19050001"], 3.5)
+    @patch("learngaugeapis.views.predict.get_analysis_pipeline")
+    def test_analyze_class_unexpected_error(self, mock_get_pipeline):
+        pipeline = MagicMock()
+        pipeline.analyze_class_from_scores.side_effect = RuntimeError("boom")
+        mock_get_pipeline.return_value = pipeline
+
+        response = self._post()
+
+        self.assertEqual(response.status_code, status.HTTP_500_INTERNAL_SERVER_ERROR)
 
 
 # ---------------------------------------------------------------------------
