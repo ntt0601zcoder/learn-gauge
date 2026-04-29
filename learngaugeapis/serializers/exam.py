@@ -32,8 +32,8 @@ class ExamSerializer(serializers.ModelSerializer):
             total_passed = obj.exam_results.with_metrics().filter(is_passed=True).count()
 
         clo_classification_fn_map = {
-            ExamFormat.MCQ: self.__get_exam_result_metadata,
-            ExamFormat.ESSAY: self.__get_essay_exam_result_metadata,
+            ExamFormat.MCQ.value: self.__get_exam_result_metadata,
+            ExamFormat.ESSAY.value: self.__get_essay_exam_result_metadata,
         }
 
         return {

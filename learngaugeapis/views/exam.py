@@ -24,13 +24,13 @@ from learngaugeapis.errors.exceptions import InvalidFileContentException
 from learngaugeapis.models.essay_exam_result import EssayExamResult
 
 class ExamView(ViewSet):
-    # authentication_classes = [UserAuthentication]
+    authentication_classes = [UserAuthentication]
     paginator = CustomPageNumberPagination()
 
-    # def get_permissions(self):
-    #     if self.action in ['create', 'update', 'destroy']:
-    #         return [IsRoot()]
-    #     return []
+    def get_permissions(self):
+        if self.action in ['create', 'update', 'destroy']:
+            return [IsRoot()]
+        return []
     
     @swagger_auto_schema(
         responses={200: ExamSerializer(many=True)},
@@ -212,7 +212,7 @@ class ExamView(ViewSet):
                     name=validated_data["name"],
                     description=validated_data["description"],
                     clo_type=validated_data["clo_type"],
-                    exam_format=ExamFormat.MCQ,
+                    exam_format=ExamFormat.MCQ.value,
                     chapters=validated_data["chapters"],
                     pass_expectation_rate=validated_data["pass_expectation_rate"],
                     clo_pass_threshold=validated_data["clo_pass_threshold"],
@@ -493,7 +493,7 @@ class ExamView(ViewSet):
                     name=validated_data["name"],
                     description=validated_data["description"],
                     clo_type=validated_data["clo_type"],
-                    exam_format=ExamFormat.ESSAY,
+                    exam_format=ExamFormat.ESSAY.value,
                     chapters=validated_data["chapters"],
                     pass_expectation_rate=validated_data["pass_expectation_rate"],
                     clo_pass_threshold=validated_data["clo_pass_threshold"],
