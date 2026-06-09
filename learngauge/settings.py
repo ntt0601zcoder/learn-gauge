@@ -90,6 +90,7 @@ DATABASE_USER = config("DATABASE_USER")
 DATABASE_PASSWORD = config("DATABASE_PASSWORD")
 DATABASE_HOST = config("DATABASE_HOST")
 DATABASE_PORT = config("DATABASE_PORT", 3306)
+DATABASE_SCHEMA = config("DATABASE_SCHEMA", "public")
 
 DATABASES = {
     'default': {
@@ -101,6 +102,14 @@ DATABASES = {
         'PORT': DATABASE_PORT,
     }
 }
+
+# PostgreSQL only: pick the schema via the connection search_path.
+# Skipped for engines like MySQL, which have no schema concept and would
+# reject the -c option.
+if 'postgresql' in DATABASE_ENGINE and DATABASE_SCHEMA:
+    DATABASES['default']['OPTIONS'] = {
+        'options': f'-c search_path={DATABASE_SCHEMA}',
+    }
 
 REDIS_HOST = config("REDIS_HOST")
 REDIS_PORT = config("REDIS_PORT")
