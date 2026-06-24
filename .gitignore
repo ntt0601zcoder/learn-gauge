@@ -213,3 +213,5 @@ public/
 # ML model artifacts (too large for git)
 models/
 *.joblib
+# macOS
+.DS_Store
